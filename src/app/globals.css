@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-base: #181825;
+  --color-mantle: #1e1e2e;
+  --color-surface: #313244;
+  --color-surface-hover: #45475a;
+  --color-overlay: #585b70;
+  --color-text: #cdd6f4;
+  --color-subtext: #a6adc8;
+  --color-brand: #ef6b35;
+  --color-accent: #137f78;
+  --color-green: #a6e3a1;
+  --color-yellow: #f9e2af;
+  --color-red: #f38ba8;
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: oklch(from var(--color-brand) l c h / 0.3);
+  color: var(--color-text);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-surface-hover);
+}
+
+/* Animated grid background */
+@keyframes grid-fade {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.06; }
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(var(--color-surface) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-surface) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: grid-fade 8s ease-in-out infinite;
+}
+
+/* Glow effects */
+.glow-brand {
+  box-shadow: 0 0 40px oklch(from var(--color-brand) l c h / 0.15),
+              0 0 80px oklch(from var(--color-brand) l c h / 0.05);
+}
+
+.glow-gradient {
+  box-shadow: 0 0 60px oklch(from var(--color-brand) l c h / 0.1),
+              0 0 120px oklch(from var(--color-accent) l c h / 0.05);
+}
+
+/* Gradient border effect */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--color-brand), var(--color-accent));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-brand), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Radial glow for hero */
+.hero-glow {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    oklch(from var(--color-brand) l c h / 0.12) 0%,
+    oklch(from var(--color-accent) l c h / 0.05) 40%,
+    transparent 70%
+  );
+}
+
+/* Fade in up animation for scroll reveals */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
