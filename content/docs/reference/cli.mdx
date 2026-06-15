@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: The main sb-mig command families and when to use each one.
+description: Global conventions, command families, and where each command is documented.
 ---
 
 # CLI reference
@@ -9,30 +9,97 @@ description: The main sb-mig command families and when to use each one.
 sb-mig [command]
 ```
 
+`sb-mig` is a Storyblok Management API CLI. Most commands read configuration
+from the current project, then either inspect Storyblok state, write local JSON
+artifacts, or write back to Storyblok.
+
+## Global commands
+
+| Form | Behavior |
+| --- | --- |
+| `sb-mig` | Show top-level help. |
+| `sb-mig --help` | Show top-level help. |
+| `sb-mig help` | Show top-level help. |
+| `sb-mig <command> --help` | Show help for one command family. |
+| `sb-mig --version` | Print the installed `sb-mig` package version. |
+
 ## Command families
 
-| Command | Purpose |
-| --- | --- |
-| `sync` | Synchronize components, roles, datasources, plugins, stories, and assets. |
-| `migrate` | Run story or preset data migrations. |
-| `language-publish-state` | Build a read-only story language publish-state map. |
-| `published-layer-export` | Export draft/current and latest published layers as JSON. |
-| `story-versions` | Inspect Storyblok Management API story version history. |
-| `backup` | Back up Storyblok resources to local JSON files. |
-| `revert` | Restore stories from a local story backup file. |
-| `copy` | Copy stories or folders between spaces. |
-| `discover` | Discover local components and migration config files. |
-| `remove` | Remove components or all stories from a space. |
-| `migrations` | Recognize Backpack package upgrade migrations. |
-| `init` | Initialize project Storyblok environment settings. |
-| `debug` | Print resolved config and package metadata. |
+| Command | Purpose | Full reference |
+| --- | --- | --- |
+| `sync` | Synchronize components, roles, datasources, plugins, stories, and assets. | [sync](/docs/reference/sync) |
+| `migrate` | Run story or preset data migrations. | [migrate](/docs/reference/migrate) |
+| `language-publish-state` | Build a read-only language publish-state map. | [inspection commands](/docs/reference/inspection) |
+| `published-layer-export` | Export draft/current and latest published story layers. | [inspection commands](/docs/reference/inspection) |
+| `story-versions` | Inspect Management API story version history for one story. | [inspection commands](/docs/reference/inspection) |
+| `backup` | Back up Storyblok resources to local JSON files. | [backup, revert, remove](/docs/reference/backup-revert-remove) |
+| `revert` | Restore stories from a local story backup file. | [backup, revert, remove](/docs/reference/backup-revert-remove) |
+| `remove` | Remove components or all stories from a space. | [backup, revert, remove](/docs/reference/backup-revert-remove) |
+| `copy` | Copy stories or folders between spaces. | [utility commands](/docs/reference/utilities) |
+| `discover` | Discover local component schemas and migration configs. | [utility commands](/docs/reference/utilities) |
+| `migrations` | Recognize Backpack package upgrade migrations. | [utility commands](/docs/reference/utilities) |
+| `init` | Initialize Storyblok environment settings. | [utility commands](/docs/reference/utilities) |
+| `debug` | Print resolved config and dependency metadata. | [utility commands](/docs/reference/utilities) |
 
-## Built-in help
+## Command matrix
 
-The CLI help is the source of truth for current flags:
+Use [Command Matrix](/docs/reference/command-matrix) as the coverage checklist.
+It lists every public command form, valid selectors, options, and write behavior.
+
+## Flag conventions
+
+The public CLI uses long flags. Examples:
 
 ```bash
-sb-mig --help
-sb-mig sync --help
-sb-mig migrate --help
+--dry-run
+--migrate-from file
+--publicationMode preserve-layers
+--publicationLanguages default,fr,de
 ```
+
+`meow`, the CLI parser, exposes kebab-case flags as camelCase internally. The
+docs show the form users should type in the shell.
+
+Repeatable flags can be passed more than once:
+
+```bash
+--migration migration-a --migration migration-b
+--withSlug blog/home --withSlug docs/getting-started
+--storyId 111 --storyId 222
+```
+
+## Config fallback
+
+Most Storyblok commands read `storyblok.config.js` or `storyblok.config.mjs`
+from the current working directory and merge it with `.env` defaults.
+
+Important environment values:
+
+| Variable | Used for |
+| --- | --- |
+| `STORYBLOK_SPACE_ID` | Default space ID when a command falls back to configured space. |
+| `STORYBLOK_OAUTH_TOKEN` | Management API access. |
+| `STORYBLOK_ACCESS_TOKEN` | Delivery API token for translated language publish-state checks. |
+| `NEXT_PUBLIC_STORYBLOK_ACCESS_TOKEN` | Delivery API fallback token. |
+| `NEXT_PUBLIC_STORYBLOK_MANAGEMENT_API_URL` | Management API URL override. |
+| `NEXT_PUBLIC_STORYBLOK_DELIVERY_API_URL` | Delivery API URL override. |
+| `NEXT_PUBLIC_STORYBLOK_GRAPHQL_API_URL` | GraphQL API URL override. |
+
+Some commands say `--from` or `--to` is required. In implementation, several
+older commands fall back to configured `spaceId` when the flag is omitted. For
+production usage, pass explicit `--from` and `--to` so command logs and
+artifacts are unambiguous.
+
+## Confirmation flags
+
+`--yes` skips prompts for commands that call the confirmation helper. It is
+used by:
+
+- `sync components --all --ssot`
+- destructive `sync content` directions that delete target stories before sync
+- `migrate content`
+- `migrate presets`
+- `revert content`
+
+`--dry-run` skips writes only for commands that explicitly support it. It is
+not a universal global flag.

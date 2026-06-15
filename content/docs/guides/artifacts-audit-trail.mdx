@@ -5,40 +5,12 @@ description: Understand the files sb-mig writes during dry runs and real migrati
 
 # Artifacts and audit trail
 
-sb-mig writes local files so migration runs are inspectable after the command exits.
-
-## Dry-run artifacts
-
-Dry runs can write:
-
-```txt
-dry-run--<name>---story-input-full.json
-dry-run--<name>---story-after-full.json
-dry-run--<name>---story-to-migrate.json
-dry-run--<name>---story-migration-pipeline-summary.json
-dry-run--<name>---language-publish-state-map.json
-dry-run--<name>---publication-plan-summary.json
-```
-
-When `preserve-layers` is active, sb-mig also writes:
-
-```txt
-dry-run--<name>---draft-current-input-full.json
-dry-run--<name>---draft-current-after-full.json
-dry-run--<name>---published-layer-input-full.json
-dry-run--<name>---published-layer-after-full.json
-dry-run--<name>---published-layer-summary.json
-```
-
-## Real-run artifacts
-
-Real runs write changed payloads, pipeline summaries, backups, and JSONL migration run logs.
-
-Run logs include update, publish, skipped publish, failure, and summary records.
+sb-mig writes local files so migration work can be reviewed after the command
+exits. Most migration artifacts are written under `sbmig/migrations` by default.
 
 ## Stable names
 
-Use `--fileName` to make output names stable and easy to attach to a release:
+Use `--fileName` when you want predictable artifact names:
 
 ```bash
 sb-mig migrate content --all \
@@ -48,3 +20,120 @@ sb-mig migrate content --all \
   --dry-run \
   --fileName release-2026-06-content
 ```
+
+With `--fileName release-2026-06-content`, files use that sanitized base name
+and do not get a datestamp suffix. Without `--fileName`, sb-mig derives the base
+name from `--from` and appends a datestamp to migration artifact files.
+
+## Standard dry-run files
+
+Dry-run content and preset migrations can write:
+
+```txt
+dry-run--<name>---story-input-full.json
+dry-run--<name>---story-after-full.json
+dry-run--<name>---story-to-migrate.json
+dry-run--<name>---story-migration-pipeline-summary.json
+
+dry-run--<name>---preset-input-full.json
+dry-run--<name>---preset-after-full.json
+dry-run--<name>---preset-to-migrate.json
+dry-run--<name>---preset-migration-pipeline-summary.json
+```
+
+For stories in a publishing mode, dry runs also write:
+
+```txt
+dry-run--<name>---language-publish-state-map.json
+dry-run--<name>---publication-plan-summary.json
+```
+
+## Preserve-layer dry-run files
+
+When `--publicationMode preserve-layers` is active, sb-mig also previews both
+draft/current and latest published payloads:
+
+```txt
+dry-run--<name>---draft-current-input-full.json
+dry-run--<name>---draft-current-after-full.json
+dry-run--<name>---published-layer-input-full.json
+dry-run--<name>---published-layer-after-full.json
+dry-run--<name>---published-layer-summary.json
+```
+
+These files are the proof for dirty published stories: they show the migrated
+published layer that would be published, and the migrated draft/current layer
+that would be restored afterward.
+
+## Real-run files
+
+Real runs write the changed payload and pipeline summary without the `dry-run--`
+prefix:
+
+```txt
+<name>---story-to-migrate.json
+<name>---story-migration-pipeline-summary.json
+<name>---language-publish-state-map.json
+<name>---story-migration-run-log.jsonl
+```
+
+Preset runs write equivalent preset artifacts:
+
+```txt
+<name>---preset-to-migrate.json
+<name>---preset-migration-pipeline-summary.json
+<name>---preset-migration-run-log.jsonl
+```
+
+`preserve-layers` real runs also write the draft/current and published-layer
+files without the `dry-run--` prefix.
+
+## Run logs
+
+Real runs write JSONL records after Storyblok write attempts complete. Event
+types include:
+
+| Event | Meaning |
+| --- | --- |
+| `update_success` | Story or preset update succeeded. |
+| `update_failed` | Story or preset update failed. |
+| `publish_success` | Story language publish succeeded. |
+| `publish_failed` | Story language publish failed. |
+| `publish_skipped` | Publish was skipped because source state should not publish. |
+| `migration_write_summary` | Final per-run write summary. |
+
+Dry runs return before Storyblok writes, so they do not create JSONL run logs.
+
+## Pre-migration backups
+
+For real runs with `--migrate-from space`, sb-mig writes source backups before
+writing migrated content:
+
+```txt
+sbmig/backup/story/before__<name>*.sb.stories.json
+sbmig/backup/preset/before__<name>*.sb.presets.json
+```
+
+`revert content` also creates a target-space backup before restoring:
+
+```txt
+<target-space>--backup-before-revert.sb.stories
+```
+
+## Inspection outputs
+
+`language-publish-state` writes a reusable publish-state JSON file:
+
+```txt
+sbmig/language-publish-state/<name>.json
+```
+
+`published-layer-export` writes:
+
+```txt
+<name>---draft-current-full.json
+<name>---published-layer-full.json
+<name>---dual-layer-summary.json
+```
+
+`story-versions --outputPath` writes exactly to the path you pass.

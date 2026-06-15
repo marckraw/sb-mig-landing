@@ -2,9 +2,11 @@
   "title": "Reference",
   "pages": [
     "cli",
+    "command-matrix",
     "sync",
     "migrate",
     "inspection",
-    "backup-revert-remove"
+    "backup-revert-remove",
+    "utilities"
   ]
 }

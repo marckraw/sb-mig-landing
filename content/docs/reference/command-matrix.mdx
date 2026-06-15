@@ -1,0 +1,126 @@
+---
+title: Command Matrix
+description: Coverage checklist for every public sb-mig command form and option family.
+---
+
+# Command matrix
+
+This page is the coverage checklist for the public CLI surface in
+`sb-mig@6.1.1-beta.1`.
+
+## Top level
+
+| Command form | Reads Storyblok | Writes files | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig` | No | No | No |
+| `sb-mig --help` | No | No | No |
+| `sb-mig help` | No | No | No |
+| `sb-mig <command> --help` | No | No | No |
+| `sb-mig --version` | No | No | No |
+
+## sync
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig sync components --all` | `--all` | `--presets`, `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync components --all --ssot` | `--all --ssot` | `--presets`, `--dry-run`, `--yes` | Yes unless `--dry-run`; destructive |
+| `sb-mig sync components <component...>` | component names | `--presets`, `--packageName`, `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync roles --all` | `--all` | `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync roles <role...>` | role names | `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync datasources --all` | `--all` | `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync datasources <datasource...>` | datasource names | `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync plugins <plugin...>` | plugin names | `--dry-run` | Yes unless `--dry-run` |
+| `sb-mig sync content --all` | `--all` | `--from`, `--to`, `--syncDirection`, `--dry-run`, `--yes` | Depends on direction |
+| `sb-mig sync content --stories` | `--stories` | `--from`, `--to`, `--syncDirection`, `--dry-run`, `--yes` | Depends on direction |
+| `sb-mig sync content --assets` | `--assets` | `--from`, `--to`, `--syncDirection`, `--dry-run` | Depends on direction |
+
+Content sync directions:
+
+| Direction | Valid with | Destructive behavior |
+| --- | --- | --- |
+| `fromSpaceToFile` | `--all`, `--stories`, `--assets` | No target deletion; writes local backup files. |
+| `fromFileToSpace` | `--all`, `--stories` for stories; assets not implemented | Non-dry story sync backs up and deletes target stories before write. |
+| `fromSpaceToSpace` | `--all`, `--stories`, `--assets` | Non-dry story sync backs up and deletes target stories before write. |
+| `fromAWSToSpace` | `--stories`; `--all` calls story path and unsupported asset path | Imports Content Hub/AWS story data into target space. |
+
+## migrate
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig migrate content --all` | `--all`, `--migration` | `--from`, `--to`, `--withSlug`, `--startsWith`, `--migrate-from`, `--fromFilePath`, `--publicationMode`, `--publicationLanguages`, `--languagePublishStatePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
+| `sb-mig migrate presets --all` | `--all`, exactly one `--migration` | `--from`, `--to`, `--migrate-from`, `--fromFilePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
+
+Content migration constraints:
+
+| Combination | Status |
+| --- | --- |
+| `--publicationMode preserve-layers --from A --to A` | Valid. Default and safest in-place production mode. |
+| `--publicationMode preserve-layers --from A --to B` | Rejected. Preserve-layers currently requires same source and target space. |
+| `--publicationMode preserve-layers --migrate-from file` | Rejected. Preserve-layers needs Story Versions API access from a source space. |
+| `--publicationMode collapse-draft --publicationLanguages default,fr,de` | Valid. Publishes selected languages for stories/languages that were publishable in source state. |
+| `--publicationMode save-only` | Valid. Saves only and never publishes. |
+| `--publicationMode save-only --publicationLanguages ...` | Rejected. Save-only does not publish languages. |
+| `--publicationMode save-only --languagePublishStatePath ...` | Rejected. Save-only does not use publish-state maps. |
+| `--publish`, `--publishLanguages`, `--preservePublishedLayer` | Rejected legacy flags. |
+| `migrate content <component-name...>` | Help lists this form, but current built `6.1.1-beta.1` rejects it. Use `--all --migrationComponents <migration>:<component...>`. |
+
+Preset migration constraints:
+
+| Combination | Status |
+| --- | --- |
+| one `--migration` | Valid. |
+| multiple `--migration` values | Rejected for presets. |
+| `--publicationMode` | Rejected for presets. |
+| `--publicationLanguages` | Rejected for presets. |
+| `--languagePublishStatePath` | Rejected for presets. |
+
+## inspection
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig language-publish-state --from <space>` | `--from` | `--accessToken`, `--languages`, `--withSlug`, `--startsWith`, `--fileName`, `--outputPath` | No |
+| `sb-mig story-versions --from <space> --storyId <id>` | `--from`, `--storyId` | `--showContent`, `--page`, `--perPage`, `--raw`, `--outputPath` | No |
+| `sb-mig story-versions --from <space> --withSlug <slug>` | `--from`, `--withSlug` | `--showContent`, `--page`, `--perPage`, `--raw`, `--outputPath` | No |
+| `sb-mig published-layer-export --from <space> --all` | `--from`, one selector | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
+| `sb-mig published-layer-export --from <space> --storyId <id>` | `--from`, one or more `--storyId` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
+| `sb-mig published-layer-export --from <space> --withSlug <slug>` | `--from`, one or more `--withSlug` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
+| `sb-mig published-layer-export --from <space> --startsWith <prefix>` | `--from`, `--startsWith` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
+
+## backup, revert, remove
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig backup components --all` | `--all` | none | No |
+| `sb-mig backup components <component>` | component name | none | No |
+| `sb-mig backup component-groups --all` | `--all` | none | No |
+| `sb-mig backup component-groups <group>` | group name | none | No |
+| `sb-mig backup roles --all` | `--all` | none | No |
+| `sb-mig backup roles <role>` | role name | none | No |
+| `sb-mig backup datasources --all` | `--all` | none | No |
+| `sb-mig backup datasources <datasource>` | datasource name | none | No |
+| `sb-mig backup presets --all` | `--all` | none | No |
+| `sb-mig backup presets <preset-id>` | preset ID | none | No |
+| `sb-mig backup component-presets --all` | `--all` | `--metadata` | No |
+| `sb-mig backup component-presets <component>` | component name | none | No |
+| `sb-mig backup plugins --all` | `--all` | none | No |
+| `sb-mig backup plugins <plugin>` | plugin name | none | No |
+| `sb-mig backup stories --all` | `--all` | none | No |
+| `sb-mig revert content --from <file> --to <space>` | `--from`, `--to` | `--yes` | Yes |
+| `sb-mig remove components --all` | `--all` | none | Yes |
+| `sb-mig remove components <component...>` | component names | none | Yes |
+| `sb-mig remove story --all --from <space>` | `--all`, `--from` | none | Yes, destructive and no prompt |
+| `sb-mig remove roles` | none | none | No-op warning |
+| `sb-mig remove datasources` | none | none | No-op warning |
+
+## utilities
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig copy stories --what <story> --where <folder>` | `--what`, `--where` | `--sourceSpace`, `--targetSpace` | Yes |
+| `sb-mig copy stories --what <folder> --where <folder>` | `--what`, `--where` | `--sourceSpace`, `--targetSpace` | Yes |
+| `sb-mig copy stories --what <folder>/* --where <folder>` | `--what`, `--where` | `--sourceSpace`, `--targetSpace` | Yes |
+| `sb-mig discover components --all` | `--all` | `--write`, `--file` | No |
+| `sb-mig discover migrations --all` | `--all` | none | No |
+| `sb-mig migrations recognize --from <version>` | `--from` | `--to` | No |
+| `sb-mig init project --spaceId <id> --oauthToken <token> --region <region>` | `--spaceId`, `--oauthToken`, `--region` | `--gtmToken` | Yes |
+| `sb-mig debug` | none | none | No |

@@ -1,0 +1,127 @@
+---
+title: Utility Commands
+description: Copy, discover, migrations, init, and debug command reference.
+---
+
+# Utility commands
+
+This page covers commands that do not fit the main sync/migrate/backup groups.
+
+## copy
+
+```bash
+sb-mig copy stories \
+  --sourceSpace 12345 \
+  --targetSpace 67890 \
+  --what blog/post-1 \
+  --where imported
+```
+
+`copy stories` copies a source story or folder tree into a target folder.
+
+### Strategies
+
+| `--what` value | Strategy | Behavior |
+| --- | --- | --- |
+| `blog/post-1` | `story` | Copy one story and attach it under `--where`. |
+| `blog` | `folder_with_root` | Copy the folder story and all descendants under `--where`. |
+| `blog/*` | `folder_recursive` | Copy the folder children under `--where` without copying the folder root. |
+
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--sourceSpace` | string | Source Storyblok space ID. Falls back to configured `spaceId`. |
+| `--targetSpace` | string | Target Storyblok space ID. Falls back to configured `spaceId`. |
+| `--what` | string | Source story or folder `full_slug`. Use `folder/*` for children-only folder copy. |
+| `--where` | string | Existing target folder `full_slug` to attach copied stories under. |
+
+`--what` must resolve to an existing story or folder. `--where` must resolve to
+an existing folder in the target space. The command writes copied stories to the
+target space and currently logs internal strategy details while it runs.
+
+## discover
+
+### Components
+
+```bash
+sb-mig discover components --all
+sb-mig discover components --all --write
+sb-mig discover components --all --write --file all-components
+```
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Discover all local and external component schema files. |
+| `--write` | boolean | Write discovered component names to a local file. |
+| `--file` | string | Output file name when `--write` is passed. |
+
+Without `--write`, the command prints discovered component metadata. With
+`--write`, it creates or overwrites the component list file.
+
+### Migrations
+
+```bash
+sb-mig discover migrations --all
+```
+
+Prints discovered migration config filenames. This command is read-only.
+
+## migrations recognize
+
+```bash
+sb-mig migrations recognize --from 3.4.0
+sb-mig migrations recognize --from 3.4.0 --to 4.0.0
+```
+
+This command is specific to Backpack upgrade flows. It compares a previous
+Backpack version with a target version and prints recommended `migrate content`
+and `migrate presets` commands.
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--from` | string | Previous package version. Required. |
+| `--to` | string | Target package version. Optional. Falls back to installed `@ef-global/backpack` dependency version from `package.json`. |
+
+The command reads `applied-backpack-migrations.json` when present and reads
+`package.json` when `--to` is omitted. It does not call Storyblok and does not
+write files.
+
+## init project
+
+```bash
+sb-mig init project \
+  --spaceId 12345 \
+  --oauthToken xxx \
+  --region eu
+
+sb-mig init project \
+  --spaceId 12345 \
+  --oauthToken xxx \
+  --region us \
+  --gtmToken GTM-XXXX
+```
+
+`init project` creates a local `.env` and updates the Storyblok space preview
+domain.
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--spaceId` | string | Storyblok space ID. Required. |
+| `--oauthToken` | string | Management API OAuth token. Required. |
+| `--region` | `eu`, `us`, or `cn` | Storyblok region. Required. |
+| `--gtmToken` | string | Optional Google Tag Manager token. Defaults to `put-your-gtm-token-here`. |
+
+The generated `.env` includes region URLs, access token, OAuth token, preview
+secret, space ID, translation strategy, and GTM ID. The preview domain is set to
+`https://localhost:3000/api/preview/preview?secret=<secret>&slug=`.
+
+## debug
+
+```bash
+sb-mig debug
+```
+
+Prints resolved Storyblok config, `sb-mig` version, dependency versions, the
+consumer `@ef-global/backpack` version when available, and whether the consumer
+package is ESM or CommonJS. It reads local config and package metadata only.

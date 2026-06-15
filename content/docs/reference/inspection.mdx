@@ -5,7 +5,31 @@ description: Read-only commands for understanding Storyblok state before migrati
 
 # Inspection commands
 
+These commands are read-only against Storyblok. They exist to make migration
+state inspectable before you run write commands.
+
 ## language-publish-state
+
+```bash
+sb-mig language-publish-state --from 12345
+```
+
+Reads source stories and writes a JSON map of publication state by story and
+language.
+
+### Options
+
+| Flag | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `--from` | string | none | Source space ID. Required. |
+| `--accessToken` | string | configured access token | Delivery API token override for translated language checks. |
+| `--languages` | string | `all` | `all`, `default`, or comma-separated language codes such as `default,fr,de`. |
+| `--withSlug` | repeatable string | none | Inspect exact story `full_slug` values. |
+| `--startsWith` | string | none | Inspect stories whose `full_slug` starts with the prefix. |
+| `--fileName` | string | derived name | Stable output base name under `sbmig/language-publish-state`. |
+| `--outputPath` | string | default folder | Explicit output path for the generated JSON file. |
+
+### Examples
 
 ```bash
 sb-mig language-publish-state \
@@ -13,20 +37,52 @@ sb-mig language-publish-state \
   --startsWith about/ \
   --languages all \
   --fileName about-prod
+
+sb-mig language-publish-state \
+  --from 12345 \
+  --accessToken xxx \
+  --withSlug about/testimonials \
+  --languages default,fr
 ```
 
-Writes a local JSON map of default and translated language publication states.
+Default-language state comes from the Management API. Translated language state
+uses Delivery API published and draft comparisons, so a Delivery API token is
+required when translated languages are requested and no configured token exists.
 
 ## published-layer-export
 
 ```bash
-sb-mig published-layer-export \
-  --from 12345 \
-  --startsWith about/ \
-  --fileName about-layer-check
+sb-mig published-layer-export --from 12345 --startsWith about/
 ```
 
-Writes:
+Exports selected draft/current stories, latest published Story Versions API
+content, and a comparison summary.
+
+### Selectors
+
+Pass one selector family for clarity:
+
+| Selector | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Export all non-folder stories. |
+| `--storyId` | repeatable string | Export exact story IDs. |
+| `--withSlug` | repeatable string | Export exact story `full_slug` values. |
+| `--startsWith` | string | Export non-folder stories under a prefix. |
+
+If multiple selector families are passed, implementation priority is
+`--storyId`, then `--withSlug`, then `--startsWith`, then `--all`.
+
+### Options
+
+| Flag | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `--from` | string | none | Source space ID. Required. |
+| `--fileName` | string | derived from selector | Stable output base name. |
+| `--outputPath` | string | `sbmig/published-layer-export` | Output directory. |
+| `--versionsPerPage` | number | `25` | Story versions per page. |
+| `--maxVersionPages` | number | `4` | Maximum story version pages to inspect per story. |
+
+### Output files
 
 ```txt
 <name>---draft-current-full.json
@@ -34,11 +90,63 @@ Writes:
 <name>---dual-layer-summary.json
 ```
 
+### Examples
+
+```bash
+sb-mig published-layer-export \
+  --from 12345 \
+  --withSlug about/contact \
+  --fileName contact-layer-check
+
+sb-mig published-layer-export \
+  --from 12345 \
+  --storyId 178888427520390
+
+sb-mig published-layer-export \
+  --from 12345 \
+  --startsWith about/ \
+  --versionsPerPage 50 \
+  --maxVersionPages 8
+```
+
 ## story-versions
 
 ```bash
-sb-mig story-versions --from 12345 --withSlug about/contact --raw
-sb-mig story-versions --from 12345 --storyId 98765 --outputPath versions.json
+sb-mig story-versions --from 12345 --storyId 98765
+sb-mig story-versions --from 12345 --withSlug about/contact
 ```
 
-Use this when you need raw Management API story version history for one story.
+Reads Management API `story_versions` for one story.
+
+### Selectors
+
+| Selector | Type | Effect |
+| --- | --- | --- |
+| `--storyId` | string | Inspect one story ID. Required unless `--withSlug` is passed. |
+| `--withSlug` | string | Resolve one `full_slug` to a story ID. Required unless `--storyId` is passed. |
+
+### Options
+
+| Flag | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `--from` | string | none | Source space ID. Required. |
+| `--showContent` | boolean | `true` | Ask Storyblok to include version content. |
+| `--page` | number | `1` | Versions page. |
+| `--perPage` | number | `25` | Versions per page. |
+| `--raw` | boolean | `false` | Print the raw Storyblok API response instead of compact summary. |
+| `--outputPath` | string | none | Write JSON output to this file instead of stdout. |
+
+### Examples
+
+```bash
+sb-mig story-versions --from 12345 --storyId 98765
+
+sb-mig story-versions \
+  --from 12345 \
+  --withSlug tours/europe \
+  --raw \
+  --outputPath sbmig/story-versions/tours-europe.raw.json
+```
+
+When slug resolution fails, the command searches close Storyblok slugs and
+prints possible matches.

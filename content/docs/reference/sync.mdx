@@ -5,55 +5,179 @@ description: Sync schemas, roles, datasources, plugins, stories, and assets.
 
 # sync
 
-## Components
+```bash
+sb-mig sync <resource> [selector] [options]
+```
+
+`sync` pushes local schema-like resources to Storyblok or moves content between
+spaces/files. The supported resources are `components`, `roles`, `datasources`,
+`plugins`, and `content`.
+
+## components
+
+### Valid forms
 
 ```bash
 sb-mig sync components --all
+sb-mig sync components --all --dry-run
 sb-mig sync components --all --presets
-sb-mig sync components accordion accordion-item --presets
+sb-mig sync components --all --presets --dry-run
 sb-mig sync components --all --ssot --yes
+sb-mig sync components --all --ssot --presets --yes
+sb-mig sync components --all --ssot --dry-run
+sb-mig sync components accordion accordion-item
+sb-mig sync components accordion accordion-item --presets
+sb-mig sync components accordion --packageName @scope/package
+sb-mig sync components accordion --dry-run
 ```
 
-`--ssot` is destructive. It removes GUI-only components and replaces them with code versions.
+### Options
 
-## Roles
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Sync every discovered local component schema. |
+| component names | positional | Sync only the named local component schemas. |
+| `--presets` | boolean | Also sync component presets and set default presets. |
+| `--ssot` | boolean | Single Source of Truth mode for `--all`; removes GUI-only remote components and replaces them with code versions. |
+| `--packageName` | string | Resolve provided components from an external package. |
+| `--dry-run` | boolean | Preview component changes without Storyblok writes. |
+| `--yes` | boolean | Skip the `--ssot` confirmation prompt. |
+
+`--ssot` is destructive and only applies with `--all`. Use `--dry-run` first.
+
+## roles
+
+### Valid forms
 
 ```bash
 sb-mig sync roles --all
+sb-mig sync roles --all --dry-run
+sb-mig sync roles admin editor
 sb-mig sync roles admin editor --dry-run
 ```
 
-## Datasources
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Sync every discovered local role schema. |
+| role names | positional | Sync only the named local role schemas. |
+| `--dry-run` | boolean | Preview role changes without Storyblok writes. |
+
+## datasources
+
+### Valid forms
 
 ```bash
 sb-mig sync datasources --all
+sb-mig sync datasources --all --dry-run
+sb-mig sync datasources countries cities
 sb-mig sync datasources countries cities --dry-run
 ```
 
-## Plugins
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Sync every discovered local datasource schema. |
+| datasource names | positional | Sync only the named datasource schemas. |
+| `--dry-run` | boolean | Preview datasource changes without Storyblok writes. |
+
+## plugins
+
+### Valid forms
 
 ```bash
 sb-mig sync plugins my-awesome-plugin
+sb-mig sync plugins my-awesome-plugin --dry-run
 ```
 
-Run from a plugin folder that exposes `./dist/export.js`.
+Run this from a plugin folder that exposes `./dist/export.js`.
 
-## Content
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| plugin names | positional | Sync the named plugins. |
+| `--dry-run` | boolean | Preview plugin sync without Storyblok writes. |
+
+`sync plugins --all` is not implemented. Pass explicit plugin names.
+
+## content
+
+```bash
+sb-mig sync content (--all | --stories | --assets) \
+  --from <source> \
+  --to <target> \
+  --syncDirection <direction>
+```
+
+### Selectors
+
+| Selector | Effect |
+| --- | --- |
+| `--all` | Sync stories and assets. |
+| `--stories` | Sync only stories. |
+| `--assets` | Sync only assets. |
+
+### Shared options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--from` | string | Source space ID or local story file name, depending on direction. |
+| `--to` | string | Target space ID or local output file name, depending on direction. |
+| `--syncDirection` | enum | One of `fromSpaceToFile`, `fromFileToSpace`, `fromSpaceToSpace`, `fromAWSToSpace`. |
+| `--dry-run` | boolean | Preview supported story/asset sync work without writes. |
+| `--yes` | boolean | Skip destructive target-story deletion prompts. |
+
+### Directions
+
+| Direction | Story behavior | Asset behavior | Notes |
+| --- | --- | --- | --- |
+| `fromSpaceToFile` | Reads source space stories and writes local story files. | Reads source space assets and writes local asset backup files. | No target story deletion. |
+| `fromFileToSpace` | Reads local story file and writes stories into target space. | Assets are not implemented for this direction. | For stories, non-dry runs prompt, back up target stories, delete target stories, then write. |
+| `fromSpaceToSpace` | Reads source space stories and writes into target space. | Reads source assets and writes into target space. | Non-dry runs prompt, back up target stories, delete target stories, then write. |
+| `fromAWSToSpace` | Reads Content Hub/AWS data and writes stories into target space. | Unsupported asset directions log not implemented. | Intended for Content Hub import flows. |
+
+### Common examples
+
+Back up stories and assets to files:
+
+```bash
+sb-mig sync content --all \
+  --from 12345 \
+  --to prod-backup \
+  --syncDirection fromSpaceToFile
+```
+
+Back up only stories:
 
 ```bash
 sb-mig sync content --stories \
   --from 12345 \
-  --to stories-backup \
+  --to prod-stories-backup \
   --syncDirection fromSpaceToFile
 ```
 
-Supported directions:
+Preview file-to-space story restore:
 
-| Direction | Notes |
-| --- | --- |
-| `fromSpaceToFile` | Writes story and asset backup files. |
-| `fromFileToSpace` | Implemented for stories; assets are not implemented. |
-| `fromSpaceToSpace` | Can delete all target stories before recreating them. |
-| `fromAWSToSpace` | Implemented for stories. |
+```bash
+sb-mig sync content --stories \
+  --from prod-stories-backup \
+  --to 67890 \
+  --syncDirection fromFileToSpace \
+  --dry-run
+```
 
-Use `--dry-run` for supported sync modes before writing.
+Copy one space into another:
+
+```bash
+sb-mig sync content --all \
+  --from 12345 \
+  --to 67890 \
+  --syncDirection fromSpaceToSpace \
+  --yes
+```
+
+For destructive non-dry content syncs, sb-mig first writes a target story backup
+named from the target space, deletes target stories, then recreates stories.

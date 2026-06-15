@@ -5,35 +5,128 @@ description: Backup, restore, and destructive removal commands.
 
 # Backup, revert, remove
 
+This page covers commands that read local or remote resources for backup,
+restore story backups, or delete remote resources.
+
 ## backup
+
+`backup` reads Storyblok resources and writes local JSON files.
+
+### Command forms
 
 ```bash
 sb-mig backup components --all
 sb-mig backup components accordion
-sb-mig backup datasources --all
+
+sb-mig backup component-groups --all
+sb-mig backup component-groups hero-group
+
+sb-mig backup roles --all
 sb-mig backup roles admin
+
+sb-mig backup datasources --all
+sb-mig backup datasources countries
+
 sb-mig backup presets --all
-sb-mig backup component-presets accordion --metadata
+sb-mig backup presets 123456
+
+sb-mig backup component-presets --all
+sb-mig backup component-presets --all --metadata
+sb-mig backup component-presets accordion
+
 sb-mig backup plugins --all
+sb-mig backup plugins my-awesome-plugin
+
 sb-mig backup stories --all
 ```
 
-Backups read from Storyblok and write local JSON files.
+### Options
 
-## revert
+| Flag or argument | Applies to | Effect |
+| --- | --- | --- |
+| `--all` | every backup subcommand | Back up all resources of that type. |
+| resource name or ID | every backup subcommand except `stories` | Back up one named resource or preset ID. |
+| `--metadata` | `component-presets --all` | Include selected `package.json` metadata in each component preset backup. |
+
+### Resource output
+
+| Subcommand | Output folder or naming behavior |
+| --- | --- |
+| `components` | `components` folder, with `all-components` or `component-<name>` prefix. |
+| `component-groups` | `component-groups` folder. |
+| `roles` | `roles` folder. |
+| `datasources` | `datasources` folder. |
+| `presets` | `presets` folder. |
+| `component-presets` | Configured component preset backup directory, default `component-presets`. |
+| `plugins` | `plugins` folder. |
+| `stories` | Configured stories backup flow, default base `all-stories-backup`. |
+
+## revert content
 
 ```bash
-sb-mig revert content --from prod-stories-backup --to 12345 --yes
+sb-mig revert content \
+  --from prod-stories-backup \
+  --to 12345
+
+sb-mig revert content \
+  --from prod-stories-backup \
+  --to 12345 \
+  --yes
 ```
 
-`revert content` restores stories from a local backup file and updates target stories with `publish:false`. It creates a target-space backup before restoring.
+`revert content` restores stories from a local story backup file into a target
+space.
+
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--from` | string | Local story backup file name to discover and load. This is not a source space ID. |
+| `--to` | string | Target Storyblok space ID. |
+| `--yes` | boolean | Skip confirmation prompt. |
+
+### Side effects
+
+Before restoring, sb-mig writes a target-space story backup named like:
+
+```txt
+<target-space>--backup-before-revert.sb.stories
+```
+
+Restored stories are updated with `publish:false`; the command does not publish
+restored content and does not run migration configs.
 
 ## remove
+
+`remove` deletes remote resources. It does not write local backups unless you
+run a separate backup first.
+
+### components
 
 ```bash
 sb-mig remove components --all
 sb-mig remove components accordion accordion-item
+```
+
+| Form | Effect |
+| --- | --- |
+| `remove components --all` | Remove all components from the configured Storyblok space. |
+| `remove components <component...>` | Remove only the provided component names. |
+
+### story
+
+```bash
 sb-mig remove story --all --from 12345
 ```
 
-`remove story --all --from` deletes all stories in the provided Storyblok space and does not prompt for confirmation. Use it only for controlled cleanup flows.
+Deletes all stories from the provided space. This path does not prompt for
+confirmation. Back up the space first if the data matters.
+
+### roles and datasources
+
+```bash
+sb-mig remove roles
+sb-mig remove datasources
+```
+
+These subcommands are currently no-ops and only log a warning.
