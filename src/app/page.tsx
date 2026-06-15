@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer";
 
 export default function Home() {
   return (
-    <>
+    <div className="landing-shell min-h-screen">
       <Navbar />
       <main>
         <Hero />
@@ -18,6 +18,6 @@ export default function Home() {
         <CtaSection />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

@@ -25,8 +25,8 @@ html {
 }
 
 body {
-  background: var(--color-base);
-  color: var(--color-text);
+  background: var(--color-fd-background);
+  color: var(--color-fd-foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
@@ -35,8 +35,8 @@ a {
 }
 
 ::selection {
-  background: oklch(from var(--color-brand) l c h / 0.3);
-  color: var(--color-text);
+  background: oklch(from var(--color-brand) l c h / 0.28);
+  color: var(--color-fd-foreground);
 }
 
 /* Scrollbar styling */
@@ -44,13 +44,38 @@ a {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-base);
+  background: var(--color-fd-background);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-surface);
+  background: var(--color-fd-border);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fd-muted-foreground);
+}
+
+.landing-shell {
+  background: var(--color-base);
+  color: var(--color-text);
+}
+
+html:has(.landing-shell) body {
+  background: var(--color-base);
+  color: var(--color-text);
+}
+
+html:has(.landing-shell)::-webkit-scrollbar-track,
+html:has(.landing-shell) body::-webkit-scrollbar-track {
+  background: var(--color-base);
+}
+
+html:has(.landing-shell)::-webkit-scrollbar-thumb,
+html:has(.landing-shell) body::-webkit-scrollbar-thumb {
+  background: var(--color-surface);
+}
+
+html:has(.landing-shell)::-webkit-scrollbar-thumb:hover,
+html:has(.landing-shell) body::-webkit-scrollbar-thumb:hover {
   background: var(--color-surface-hover);
 }
 
