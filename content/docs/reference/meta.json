@@ -1,0 +1,10 @@
+{
+  "title": "Reference",
+  "pages": [
+    "cli",
+    "sync",
+    "migrate",
+    "inspection",
+    "backup-revert-remove"
+  ]
+}

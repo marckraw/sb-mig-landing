@@ -1,33 +1,34 @@
-# sb-mig-landing
+# sb-mig landing and docs
 
-Landing page project for sb-mig, including newsletter signup and "coming changes" sections.
+Next.js + Fumadocs site for `sb-mig`, covering the public landing page,
+CLI reference, guides, and AI-readable documentation entry points.
 
 ## Run locally
 
-From repository root:
-
 ```bash
-npm run landing:dev
+npm install
+npm run dev -- --port 4173
 ```
 
-Or directly:
+Open `http://localhost:4173`.
+
+## Main routes
+
+- `/` - product landing page
+- `/docs` - documentation home
+- `/api/search` - Fumadocs search endpoint
+- `/llms.txt` - AI-friendly docs index
+
+## Content
+
+- Landing page components live in `src/components`.
+- Documentation pages live in `content/docs`.
+- Shared docs navigation and branding live in `src/lib/layout.shared.tsx`.
+- Newsletter fallback settings live in `src/lib/newsletter.ts`.
+
+## Checks
 
 ```bash
-cd sb-mig-landing
-npm run dev
+npm run lint
+npm run build
 ```
-
-Default URL: `http://localhost:4173`
-
-## Newsletter setup
-
-`config.js` controls signup behavior:
-
-- `newsletter.endpoint`: your API/form endpoint URL
-- `newsletter.method`: HTTP method (`POST` by default)
-- `newsletter.headers`: request headers
-- `newsletter.emailFieldName`: request field for email
-- `newsletter.metadataFieldName`: request field for metadata payload
-- `fallbackEmail`: used for `mailto:` fallback when endpoint is empty
-
-If `newsletter.endpoint` is not set, the form still works by opening the user's email app with a prefilled signup email.

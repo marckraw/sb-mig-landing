@@ -1,0 +1,39 @@
+---
+title: Backup, Revert, Remove
+description: Backup, restore, and destructive removal commands.
+---
+
+# Backup, revert, remove
+
+## backup
+
+```bash
+sb-mig backup components --all
+sb-mig backup components accordion
+sb-mig backup datasources --all
+sb-mig backup roles admin
+sb-mig backup presets --all
+sb-mig backup component-presets accordion --metadata
+sb-mig backup plugins --all
+sb-mig backup stories --all
+```
+
+Backups read from Storyblok and write local JSON files.
+
+## revert
+
+```bash
+sb-mig revert content --from prod-stories-backup --to 12345 --yes
+```
+
+`revert content` restores stories from a local backup file and updates target stories with `publish:false`. It creates a target-space backup before restoring.
+
+## remove
+
+```bash
+sb-mig remove components --all
+sb-mig remove components accordion accordion-item
+sb-mig remove story --all --from 12345
+```
+
+`remove story --all --from` deletes all stories in the provided Storyblok space and does not prompt for confirmation. Use it only for controlled cleanup flows.

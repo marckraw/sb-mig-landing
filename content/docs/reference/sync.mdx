@@ -1,0 +1,59 @@
+---
+title: sync
+description: Sync schemas, roles, datasources, plugins, stories, and assets.
+---
+
+# sync
+
+## Components
+
+```bash
+sb-mig sync components --all
+sb-mig sync components --all --presets
+sb-mig sync components accordion accordion-item --presets
+sb-mig sync components --all --ssot --yes
+```
+
+`--ssot` is destructive. It removes GUI-only components and replaces them with code versions.
+
+## Roles
+
+```bash
+sb-mig sync roles --all
+sb-mig sync roles admin editor --dry-run
+```
+
+## Datasources
+
+```bash
+sb-mig sync datasources --all
+sb-mig sync datasources countries cities --dry-run
+```
+
+## Plugins
+
+```bash
+sb-mig sync plugins my-awesome-plugin
+```
+
+Run from a plugin folder that exposes `./dist/export.js`.
+
+## Content
+
+```bash
+sb-mig sync content --stories \
+  --from 12345 \
+  --to stories-backup \
+  --syncDirection fromSpaceToFile
+```
+
+Supported directions:
+
+| Direction | Notes |
+| --- | --- |
+| `fromSpaceToFile` | Writes story and asset backup files. |
+| `fromFileToSpace` | Implemented for stories; assets are not implemented. |
+| `fromSpaceToSpace` | Can delete all target stories before recreating them. |
+| `fromAWSToSpace` | Implemented for stories. |
+
+Use `--dry-run` for supported sync modes before writing.

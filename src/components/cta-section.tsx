@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Github, Package } from "lucide-react";
+import { BookOpen, Github } from "lucide-react";
 import { GradientText } from "./ui/gradient-text";
-import { REPO_URL, NPM_URL } from "@/lib/constants";
+import { REPO_URL } from "@/lib/constants";
 
 export function CtaSection() {
   return (
@@ -16,31 +17,30 @@ export function CtaSection() {
         className="mx-auto max-w-3xl text-center"
       >
         <h2 className="text-3xl font-bold md:text-4xl lg:text-5xl">
-          Ready to{" "}
-          <GradientText>migrate smarter</GradientText>?
+          Start with a{" "}
+          <GradientText>dry run</GradientText>
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-lg text-subtext">
-          Get started with sb-mig and bring your Storyblok workflows into code.
+          Read the safe migration guide, then run the command that writes
+          evidence instead of changing production.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <Link
+            href="/docs/guides/safe-content-migration"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-accent px-8 py-3.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <BookOpen className="w-4 h-4" />
+            Safe migration guide
+          </Link>
           <a
             href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-accent px-8 py-3.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Github className="w-4 h-4" />
-            View on GitHub
-          </a>
-          <a
-            href={NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-xl border border-surface bg-mantle px-8 py-3.5 text-sm font-medium text-text transition-all hover:bg-surface/30 hover:border-surface-hover"
           >
-            <Package className="w-4 h-4" />
-            npm package
+              <Github className="w-4 h-4" />
+              GitHub
           </a>
         </div>
       </motion.div>

@@ -1,0 +1,62 @@
+---
+title: Preserve Published Layers
+description: How sb-mig migrates dirty published Storyblok stories without publishing editor drafts.
+---
+
+# Preserve published layers
+
+Storyblok stories can have two meaningful content layers:
+
+- draft/current content returned by the Management API
+- published production content from Story Versions API
+
+When a story is published and has unpublished changes, those layers are intentionally different.
+
+## The problem
+
+A single-layer migration has to choose a bad tradeoff:
+
+- publish the latest draft and expose editor work early
+- save the migrated draft and leave production JSON unmigrated
+
+`--publicationMode preserve-layers` avoids that tradeoff for in-place space migrations.
+
+## Command
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --publicationMode preserve-layers \
+  --publicationLanguages all \
+  --dry-run
+```
+
+`preserve-layers` currently requires:
+
+- `--migrate-from space`
+- the same Storyblok space for `--from` and `--to`
+
+## Dirty published write order
+
+For stories where `published === true` and `unpublished_changes === true`, sb-mig:
+
+1. reads draft/current content from Management API
+2. reads the latest `status === "published"` version content
+3. migrates both layers independently in memory
+4. writes migrated published-layer content
+5. publishes that migrated published layer
+6. restores migrated draft/current content with `publish:false`
+
+The final state keeps the production and draft split:
+
+```txt
+published JSON: migrated production content
+draft JSON:     migrated editor draft content
+story state:    published=true and unpublished_changes=true
+```
+
+## Safety checks
+
+Before the dual-layer write, sb-mig re-fetches the story and compares `current_version_id` or `updated_at`. If the story changed after migration input was read, it refuses to overwrite new editor work.

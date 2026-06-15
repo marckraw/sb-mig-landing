@@ -1,0 +1,30 @@
+---
+title: Architecture
+description: How the sb-mig CLI, old API layer, and API v2 fit together today.
+---
+
+# Architecture
+
+sb-mig is currently a CLI-first TypeScript package with two API surfaces.
+
+## CLI
+
+The CLI entrypoint uses `meow` for parsing and delegates to command modules under `src/cli/commands`.
+
+Commands are thin in some places and still orchestration-heavy in others.
+
+## Current API layer
+
+The current `src/api` layer contains Storyblok operations for components, stories, assets, datasources, roles, plugins, presets, spaces, and migrations.
+
+Some of this layer still imports CLI discovery utilities and global configuration. That means it is useful internally, but not yet a perfectly isolated public SDK.
+
+## API v2
+
+`api-v2` is the evolving programmatic surface intended for direct GUI and application integration.
+
+Today it includes a client factory, stories, discovery, sync types, and resource wrappers, but it does not yet have full parity with every CLI workflow.
+
+## Documentation stance
+
+The public docs should document the CLI as the stable user surface first. API v2 docs should be explicit about maturity and parity.

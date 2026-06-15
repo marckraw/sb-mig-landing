@@ -1,0 +1,38 @@
+---
+title: CLI Reference
+description: The main sb-mig command families and when to use each one.
+---
+
+# CLI reference
+
+```bash
+sb-mig [command]
+```
+
+## Command families
+
+| Command | Purpose |
+| --- | --- |
+| `sync` | Synchronize components, roles, datasources, plugins, stories, and assets. |
+| `migrate` | Run story or preset data migrations. |
+| `language-publish-state` | Build a read-only story language publish-state map. |
+| `published-layer-export` | Export draft/current and latest published layers as JSON. |
+| `story-versions` | Inspect Storyblok Management API story version history. |
+| `backup` | Back up Storyblok resources to local JSON files. |
+| `revert` | Restore stories from a local story backup file. |
+| `copy` | Copy stories or folders between spaces. |
+| `discover` | Discover local components and migration config files. |
+| `remove` | Remove components or all stories from a space. |
+| `migrations` | Recognize Backpack package upgrade migrations. |
+| `init` | Initialize project Storyblok environment settings. |
+| `debug` | Print resolved config and package metadata. |
+
+## Built-in help
+
+The CLI help is the source of truth for current flags:
+
+```bash
+sb-mig --help
+sb-mig sync --help
+sb-mig migrate --help
+```

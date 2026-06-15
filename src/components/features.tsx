@@ -10,12 +10,12 @@ export function Features() {
     <SectionWrapper id="features">
       <div className="mb-16 text-center">
         <h2 className="text-3xl font-bold md:text-4xl">
-          What teams use{" "}
-          <GradientText>sb-mig</GradientText> for
+          Built for Storyblok changes that{" "}
+          <GradientText>matter</GradientText>
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-subtext">
-          Build, sync, and migrate Storyblok structures from code. Keep model
-          changes reviewable, scriptable, and easy to repeat across spaces.
+          Schema syncs are only part of the story. The critical path is making
+          production content migrations explainable before and after they run.
         </p>
       </div>
 

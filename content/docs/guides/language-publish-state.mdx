@@ -1,0 +1,49 @@
+---
+title: Language Publish State
+description: Inspect and preserve translated Storyblok publication state during migrations.
+---
+
+# Language publish state
+
+Storyblok translations can be published independently. sb-mig tracks this with a language publish-state map.
+
+## Generate a map
+
+```bash
+sb-mig language-publish-state \
+  --from 12345 \
+  --startsWith about/ \
+  --languages all \
+  --fileName about-prod
+```
+
+The command is read-only against Storyblok and writes a JSON map locally.
+
+## Use a map in migration
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --publicationMode preserve-layers \
+  --publicationLanguages all \
+  --languagePublishStatePath sbmig/language-publish-state/about-prod.json \
+  --yes
+```
+
+When `--languagePublishStatePath` is omitted, sb-mig builds the map automatically for the selected stories.
+
+## Language options
+
+```bash
+--publicationLanguages default
+--publicationLanguages all
+--publicationLanguages default,fr,de
+```
+
+`all` resolves to `[default]` plus configured Storyblok language codes from the target space.
+
+## State-sensitive publishing
+
+sb-mig publishes a language after migration only when the language was published before migration. In `collapse-draft`, dirty published languages are intentionally published from latest draft/current content. In `preserve-layers`, dirty published stories publish the migrated published layer, then restore migrated draft/current content.

@@ -1,0 +1,29 @@
+---
+title: Publication Model
+description: The Storyblok publication model that drives sb-mig 6.x migration behavior.
+---
+
+# Publication model
+
+Storyblok stories can represent draft and published content at the same time.
+
+## Story states
+
+| State | Meaning |
+| --- | --- |
+| `draft-only` | The story is not published. |
+| `clean-published` | The story is published and draft/current matches production. |
+| `dirty-published` | The story is published and has unpublished draft changes. |
+| `published-unknown` | The story is published but publication metadata is incomplete. |
+
+## Why this matters
+
+Dirty published stories are the dangerous case. Editors have live production content and newer saved draft edits. A migration must not accidentally publish those saved draft edits.
+
+## sb-mig modes
+
+`preserve-layers` migrates draft/current and published content separately for dirty published stories.
+
+`collapse-draft` intentionally publishes latest draft/current content for stories that were already published.
+
+`save-only` never publishes.

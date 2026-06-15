@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 @theme inline {
   --color-base: #181825;
@@ -26,6 +28,10 @@ body {
   background: var(--color-base);
   color: var(--color-text);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+a {
+  text-underline-offset: 4px;
 }
 
 ::selection {

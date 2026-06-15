@@ -1,0 +1,9 @@
+{
+  "title": "Guides",
+  "pages": [
+    "safe-content-migration",
+    "published-layers",
+    "language-publish-state",
+    "artifacts-audit-trail"
+  ]
+}

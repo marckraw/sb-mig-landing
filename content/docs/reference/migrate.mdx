@@ -1,0 +1,84 @@
+---
+title: migrate
+description: Run content and preset migration pipelines.
+---
+
+# migrate
+
+## Content migration
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --dry-run
+```
+
+Run multiple migrations in order:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-a \
+  --migration migration-b \
+  --migration migration-c \
+  --yes
+```
+
+## Scope filters
+
+```bash
+--withSlug blog/home
+--withSlug docs/getting-started
+--startsWith blog/
+```
+
+## Publication modes
+
+| Mode | Behavior |
+| --- | --- |
+| `preserve-layers` | Preserves draft/current and published layers for in-place migrations. Default. |
+| `collapse-draft` | Publishes latest draft/current content for stories that were already published. |
+| `save-only` | Saves changed stories without publishing. |
+
+## Component aliases and overrides
+
+Use aliases when wrapper components should reuse an existing migration function:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration colorPickerModeValues \
+  --migrationComponentAlias colorPickerModeValues:sb-button=sb-open-drift-button
+```
+
+Use component overrides to define the exact component scope:
+
+```bash
+--migrationComponents colorPickerModeValues:sb-section,sb-tour-page-section
+```
+
+## File input
+
+```bash
+sb-mig migrate content --all \
+  --migrate-from file \
+  --fromFilePath sbmig/migrations/dry-run--123---story-to-migrate.json \
+  --to 12345 \
+  --migration migration-a
+```
+
+## Preset migration
+
+```bash
+sb-mig migrate presets --all \
+  --from 12345 \
+  --to 12345 \
+  --migration preset-migration \
+  --dry-run
+```
+
+Preset migrations support exactly one `--migration` value.

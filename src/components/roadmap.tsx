@@ -10,11 +10,11 @@ export function Roadmap() {
     <SectionWrapper id="roadmap">
       <div className="mb-16 text-center">
         <h2 className="text-3xl font-bold md:text-4xl">
-          <GradientText>Coming changes</GradientText>
+          <GradientText>Documentation track</GradientText>
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-subtext">
-          The near-term focus is better multi-space workflows, stronger docs,
-          and cleaner release communication for teams migrating at scale.
+          The site is moving from a landing page into the operating manual for
+          Storyblok migration work.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export function Roadmap() {
 
               {/* Center dot */}
               <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-brand bg-base">
-                <span className="text-xs font-bold text-brand font-mono">{item.quarter.split(" ")[0]}</span>
+                <span className="text-xs font-bold text-brand font-mono">{i + 1}</span>
               </div>
 
               <div className="flex-1" />

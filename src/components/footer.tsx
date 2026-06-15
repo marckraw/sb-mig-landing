@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { Logo } from "./logo";
 import { REPO_URL, NPM_URL } from "@/lib/constants";
 
 const FOOTER_LINKS = [
+  { label: "Docs", href: "/docs" },
   { label: "GitHub", href: REPO_URL },
   { label: "npm", href: NPM_URL },
 ];
@@ -16,20 +18,30 @@ export function Footer() {
         </div>
 
         <p className="text-sm text-subtext text-center md:text-left">
-          Built for Storyblok migration workflows.
+          Storyblok migrations with dry-run evidence and audit trails.
         </p>
 
         <div className="flex items-center gap-6">
           {FOOTER_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-subtext hover:text-text transition-colors"
-            >
-              {link.label}
-            </a>
+            link.href.startsWith("http") ? (
+              <a
+                key={link.label}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-subtext hover:text-text transition-colors"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-sm text-subtext hover:text-text transition-colors"
+              >
+                {link.label}
+              </Link>
+            )
           ))}
         </div>
       </div>

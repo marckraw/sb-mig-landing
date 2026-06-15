@@ -1,0 +1,76 @@
+---
+title: Quickstart
+description: Install sb-mig, configure Storyblok credentials, and run the first safe commands.
+---
+
+# Quickstart
+
+## Requirements
+
+sb-mig 6.x requires Node.js 22 or Node.js 24+.
+
+```bash
+node --version
+```
+
+## Install
+
+Install the CLI globally:
+
+```bash
+npm install --global sb-mig
+```
+
+Or run it through your package manager in project scripts.
+
+## Configure credentials
+
+Create a `.env` file in the project where you run sb-mig:
+
+```bash
+STORYBLOK_OAUTH_TOKEN=your-management-token
+STORYBLOK_SPACE_ID=12345
+STORYBLOK_ACCESS_TOKEN=your-delivery-token
+```
+
+The OAuth token is used for Storyblok Management API writes. The access token is used for Delivery API reads, including translated language publish-state checks.
+
+## Optional project config
+
+Create `storyblok.config.js` or `storyblok.config.mjs` when defaults are not enough:
+
+```js
+export default {
+  componentsDirectories: ["src", "storyblok"],
+  schemaFileExt: "sb.js",
+  datasourceExt: "sb.datasource.js",
+  rolesExt: "sb.roles.js",
+  sbmigWorkingDirectory: "sbmig",
+};
+```
+
+## First read-only checks
+
+Start with discovery and inspection commands:
+
+```bash
+sb-mig discover components --all
+sb-mig language-publish-state --from 12345 --languages all --fileName baseline
+sb-mig published-layer-export --from 12345 --startsWith blog/ --fileName blog-layers
+```
+
+## First safe write preview
+
+Run migrations with `--dry-run` before a real write:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --publicationMode preserve-layers \
+  --dry-run \
+  --fileName first-preview
+```
+
+Dry runs write local artifacts under `sbmig/migrations` and do not update Storyblok.

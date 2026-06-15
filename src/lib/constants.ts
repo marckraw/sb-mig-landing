@@ -1,60 +1,80 @@
-import { Code, Shield, RefreshCw } from "lucide-react";
+import { Code, FileText, Languages, RefreshCw, Shield, Terminal } from "lucide-react";
 
 export const REPO_URL = "https://github.com/sb-mig/sb-mig";
 export const NPM_URL = "https://www.npmjs.com/package/sb-mig";
 
 export const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Roadmap", href: "#roadmap" },
+  { label: "Docs", href: "/docs" },
+  { label: "Guides", href: "/docs/guides/safe-content-migration" },
+  { label: "CLI", href: "/docs/reference/cli" },
   { label: "Newsletter", href: "#newsletter" },
   { label: "GitHub", href: REPO_URL, external: true },
 ] as const;
 
 export const FEATURES = [
   {
-    icon: Code,
-    title: "Code-first schemas",
-    description:
-      "Sync .sb.js and TypeScript schemas instead of manually clicking through each model update. Keep component definitions reviewable and version-controlled.",
-  },
-  {
     icon: Shield,
-    title: "Safe migrations",
+    title: "Dry-run first migrations",
     description:
-      "Run content migrations with backups and explicit CLI flags before touching production spaces. Roll back safely when something goes wrong.",
+      "Preview selected stories, transformed output, publication plans, and changed payloads before any Storyblok write happens.",
   },
   {
     icon: RefreshCw,
-    title: "Reusable workflows",
+    title: "Preserve published layers",
     description:
-      "Script repetitive operations for components, stories, datasources, presets, plugins, and roles. Share workflows across teams and projects.",
+      "Migrate dirty published stories without accidentally publishing saved editor drafts.",
+  },
+  {
+    icon: Languages,
+    title: "Language-aware publishing",
+    description:
+      "Inspect translated publish state and publish only languages that were already live before the migration.",
+  },
+  {
+    icon: FileText,
+    title: "Audit artifacts",
+    description:
+      "Keep JSON summaries, before/after payloads, publication plans, and JSONL run logs with every release.",
+  },
+  {
+    icon: Code,
+    title: "Code-first schemas",
+    description:
+      "Sync Storyblok component schemas, datasources, roles, plugins, and presets from version-controlled files.",
+  },
+  {
+    icon: Terminal,
+    title: "Scriptable operations",
+    description:
+      "Run repeatable Storyblok workflows locally, in CI, or as part of a controlled release process.",
   },
 ] as const;
 
 export const ROADMAP_ITEMS = [
   {
-    quarter: "Q2 2026",
-    title: "Landing + docs improvements",
+    quarter: "Now",
+    title: "CLI and migration reference",
     description:
-      "Expand this landing into a full docs experience with migration guides and examples.",
+      "Document the command surface, high-risk flags, dry-run artifacts, and safe production workflows.",
   },
   {
-    quarter: "Q2-Q3 2026",
-    title: "Multi-space operations",
+    quarter: "Next",
+    title: "Generated command matrix",
     description:
-      "Improve commands for cross-space workflows and safer merge-like synchronization patterns.",
+      "Keep docs synced with CLI help output and source-level command descriptions.",
   },
   {
-    quarter: "Q3 2026",
-    title: "Schema export and onboarding",
+    quarter: "Later",
+    title: "Use-case playbooks",
     description:
-      "Refine the component export-to-schema experience and reduce setup friction for new teams.",
+      "Publish practical migration stories for translated content, Storyblok space duplication, and Backpack upgrades.",
   },
 ] as const;
 
 export const CAPABILITIES = [
-  "Component sync",
-  "Content migration",
-  "Space to space flows",
-  "TypeScript schema support",
+  "Dry-run artifacts",
+  "Published layer preservation",
+  "Language publish-state maps",
+  "Code-first schema sync",
+  "JSONL migration logs",
 ] as const;

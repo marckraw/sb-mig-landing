@@ -89,11 +89,11 @@ export function Newsletter() {
           </div>
 
           <h2 className="mb-2 text-2xl font-bold md:text-3xl">
-            <GradientText>Newsletter</GradientText> signup
+            <GradientText>Release notes</GradientText> signup
           </h2>
           <p className="mb-8 text-subtext">
-            Get updates about releases, migration patterns, and coming changes
-            for sb-mig.
+            Get updates about sb-mig releases, migration patterns, and new
+            documentation.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>

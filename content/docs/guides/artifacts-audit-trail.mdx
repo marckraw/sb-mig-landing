@@ -1,0 +1,50 @@
+---
+title: Artifacts and Audit Trail
+description: Understand the files sb-mig writes during dry runs and real migrations.
+---
+
+# Artifacts and audit trail
+
+sb-mig writes local files so migration runs are inspectable after the command exits.
+
+## Dry-run artifacts
+
+Dry runs can write:
+
+```txt
+dry-run--<name>---story-input-full.json
+dry-run--<name>---story-after-full.json
+dry-run--<name>---story-to-migrate.json
+dry-run--<name>---story-migration-pipeline-summary.json
+dry-run--<name>---language-publish-state-map.json
+dry-run--<name>---publication-plan-summary.json
+```
+
+When `preserve-layers` is active, sb-mig also writes:
+
+```txt
+dry-run--<name>---draft-current-input-full.json
+dry-run--<name>---draft-current-after-full.json
+dry-run--<name>---published-layer-input-full.json
+dry-run--<name>---published-layer-after-full.json
+dry-run--<name>---published-layer-summary.json
+```
+
+## Real-run artifacts
+
+Real runs write changed payloads, pipeline summaries, backups, and JSONL migration run logs.
+
+Run logs include update, publish, skipped publish, failure, and summary records.
+
+## Stable names
+
+Use `--fileName` to make output names stable and easy to attach to a release:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --dry-run \
+  --fileName release-2026-06-content
+```

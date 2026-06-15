@@ -1,0 +1,88 @@
+---
+title: Safe Content Migration
+description: A production-minded workflow for previewing, auditing, and running Storyblok content migrations.
+---
+
+# Safe content migration
+
+This is the default workflow for sensitive Storyblok content changes.
+
+## 1. Scope the run
+
+Prefer a narrow selector until you trust the migration:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration normalize-design-values \
+  --withSlug blog/home \
+  --dry-run \
+  --fileName blog-home-check
+```
+
+Use `--startsWith` for a folder or section:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration normalize-design-values \
+  --startsWith blog/ \
+  --dry-run \
+  --fileName blog-check
+```
+
+## 2. Pick a publication mode
+
+Use `preserve-layers` when migrating a real production space in place:
+
+```bash
+--publicationMode preserve-layers
+```
+
+Use `collapse-draft` for duplicated spaces without reliable Story Versions API history:
+
+```bash
+--publicationMode collapse-draft
+```
+
+Use `save-only` when nothing should be published:
+
+```bash
+--publicationMode save-only
+```
+
+## 3. Dry run
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration normalize-design-values \
+  --publicationMode preserve-layers \
+  --publicationLanguages all \
+  --dry-run \
+  --fileName production-preview
+```
+
+Review the generated files in `sbmig/migrations`.
+
+## 4. Run for real
+
+Run the same command without `--dry-run`, adding `--yes` only when the reviewed command is final:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration normalize-design-values \
+  --publicationMode preserve-layers \
+  --publicationLanguages all \
+  --fileName production-run \
+  --yes
+```
+
+## 5. Keep the evidence
+
+Store migration summaries, changed payloads, and JSONL run logs with the release or change ticket. Those artifacts explain exactly what sb-mig selected, transformed, published, skipped, or failed.

@@ -1,0 +1,44 @@
+---
+title: Inspection Commands
+description: Read-only commands for understanding Storyblok state before migration.
+---
+
+# Inspection commands
+
+## language-publish-state
+
+```bash
+sb-mig language-publish-state \
+  --from 12345 \
+  --startsWith about/ \
+  --languages all \
+  --fileName about-prod
+```
+
+Writes a local JSON map of default and translated language publication states.
+
+## published-layer-export
+
+```bash
+sb-mig published-layer-export \
+  --from 12345 \
+  --startsWith about/ \
+  --fileName about-layer-check
+```
+
+Writes:
+
+```txt
+<name>---draft-current-full.json
+<name>---published-layer-full.json
+<name>---dual-layer-summary.json
+```
+
+## story-versions
+
+```bash
+sb-mig story-versions --from 12345 --withSlug about/contact --raw
+sb-mig story-versions --from 12345 --storyId 98765 --outputPath versions.json
+```
+
+Use this when you need raw Management API story version history for one story.

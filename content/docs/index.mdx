@@ -1,0 +1,43 @@
+---
+title: Start Here
+description: What sb-mig is, when to use it, and where to go next.
+---
+
+# sb-mig documentation
+
+sb-mig is a command line toolkit for Storyblok teams that want schema and content operations to be reviewable, repeatable, and inspectable.
+
+It started as a code-first Storyblok component sync tool. It now covers component schemas, roles, datasources, plugins, stories, assets, backups, content migrations, preset migrations, publication-state inspection, and migration audit artifacts.
+
+## Why teams use it
+
+- Keep Storyblok component schemas in code.
+- Sync local schema files into Storyblok spaces.
+- Move stories and assets between spaces or files.
+- Run scripted content migrations over Storyblok story JSON.
+- Preserve published and draft layers during sensitive migrations.
+- Generate dry-run evidence before writing to Storyblok.
+- Keep migration output auditable with JSON and JSONL artifacts.
+
+## Current center of gravity
+
+The most important workflow in sb-mig 6.x is safe content migration:
+
+```bash
+sb-mig migrate content --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-name \
+  --publicationMode preserve-layers \
+  --dry-run \
+  --fileName production-check
+```
+
+That command previews the selected stories, applies the migration in memory, writes local artifacts, and makes no Storyblok writes.
+
+## What to read first
+
+- [Quickstart](/docs/quickstart) for installation and config.
+- [Safe content migration](/docs/guides/safe-content-migration) for the production workflow.
+- [CLI reference](/docs/reference/cli) for command families.
+- [Publication model](/docs/explanation/publication-model) for the reason behind `preserve-layers`.

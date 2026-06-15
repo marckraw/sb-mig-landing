@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Github } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { Logo } from "./logo";
-import { NAV_LINKS, REPO_URL } from "@/lib/constants";
+import { NAV_LINKS } from "@/lib/constants";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -36,26 +37,33 @@ export function Navbar() {
 
         <div className="hidden md:flex items-center gap-8">
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              {...("external" in link && link.external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-              className="text-sm text-subtext hover:text-text transition-colors"
-            >
-              {link.label}
-            </a>
+            "external" in link && link.external ? (
+              <a
+                key={link.label}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-subtext hover:text-text transition-colors"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-sm text-subtext hover:text-text transition-colors"
+              >
+                {link.label}
+              </Link>
+            )
           ))}
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/docs"
             className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand to-accent px-4 py-2 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20"
           >
-            <Github className="w-4 h-4" />
-            View on GitHub
-          </a>
+            <BookOpen className="w-4 h-4" />
+            Read docs
+          </Link>
         </div>
       </div>
     </motion.nav>
