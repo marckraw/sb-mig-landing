@@ -29,6 +29,7 @@ artifacts, or write back to Storyblok.
 | --- | --- | --- |
 | `sync` | Synchronize components, roles, datasources, plugins, stories, and assets. | [sync](/docs/reference/sync) |
 | `migrate` | Run story or preset data migrations. | [migrate](/docs/reference/migrate) |
+| `inspect` | Inspect Storyblok content with local query files. | [inspection commands](/docs/reference/inspection) |
 | `language-publish-state` | Build a read-only language publish-state map. | [inspection commands](/docs/reference/inspection) |
 | `published-layer-export` | Export draft/current and latest published story layers. | [inspection commands](/docs/reference/inspection) |
 | `story-versions` | Inspect Management API story version history for one story. | [inspection commands](/docs/reference/inspection) |
@@ -103,3 +104,12 @@ used by:
 
 `--dry-run` skips writes only for commands that explicitly support it. It is
 not a universal global flag.
+
+## Beta feature labels
+
+Some commands are documented with a beta label when they ship as focused
+investigation tools before becoming broader workflows.
+
+| Label | Meaning |
+| --- | --- |
+| Needle in a haystack | A read-only inspection feature for finding rare Storyblok component patterns across many stories. |

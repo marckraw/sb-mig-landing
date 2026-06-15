@@ -8,6 +8,223 @@ description: Read-only commands for understanding Storyblok state before migrati
 These commands are read-only against Storyblok. They exist to make migration
 state inspectable before you run write commands.
 
+## inspect component-usage
+
+**Beta: Needle in a haystack**
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --all \
+  --query flex-group-width-child
+```
+
+`inspect component-usage` scans selected Storyblok stories with a local query
+file. Use it when you need to find rare component patterns, such as a specific
+component with a child component that has a particular field.
+
+The command is read-only against Storyblok. It does not support `--dry-run`
+because it never writes to Storyblok. It writes a local JSON report only when
+`--outputPath` is passed.
+
+### Query files
+
+Query files are normal JavaScript modules. The first implementation supports:
+
+```txt
+*.sb.query.js
+*.sb.query.cjs
+*.sb.query.mjs
+```
+
+TypeScript query files are planned, but not supported by this command yet.
+
+The query file must default-export an object with a `name` and a `match`
+function:
+
+```js
+export default {
+  name: "flex-group-width-child",
+
+  match(node, context) {
+    if (node.component !== "flex-group") {
+      return null;
+    }
+
+    return {
+      story: context.story.full_slug,
+      path: context.path,
+    };
+  },
+};
+```
+
+`match(node, context)` is called for every Storyblok component node found under
+`story.content`.
+
+| Return value | Meaning |
+| --- | --- |
+| `null` or `undefined` | No match. |
+| `true` | Match with no extra details. |
+| object | Match with details stored in the JSON report. |
+
+The context object contains:
+
+| Field | Meaning |
+| --- | --- |
+| `context.story` | Story metadata such as `id`, `name`, `slug`, and `full_slug`. |
+| `context.path` | Component path, for example `content.body[0]`. |
+| `context.parent` | Parent component object when there is one. |
+| `context.ancestors` | Ancestor component objects. |
+
+When `--query` is a name, sb-mig searches configured local component
+directories, such as `src` and `storyblok`, for a matching query file:
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --all \
+  --query flex-group-width-child
+```
+
+When `--query` is a path, sb-mig loads that file directly:
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --startsWith landing-pages \
+  --query ./queries/flex-group-width-child.sb.query.js
+```
+
+### Example: flex group with width child
+
+Create a file such as:
+
+```txt
+src/storyblok-queries/flex-group-width-child.sb.query.js
+```
+
+```js
+const hasValue = (value) =>
+  value !== undefined && value !== null && value !== "";
+
+const directArrayChildren = (node) =>
+  Object.values(node)
+    .filter(Array.isArray)
+    .flat()
+    .filter((item) => item && typeof item === "object" && item.component);
+
+export default {
+  name: "flex-group-width-child",
+  description:
+    "Find flex groups with vertical or reverse direction and children with width.",
+
+  match(node) {
+    if (node.component !== "flex-group") {
+      return null;
+    }
+
+    if (!["vertical", "reverse"].includes(node.direction)) {
+      return null;
+    }
+
+    const childrenWithWidth = directArrayChildren(node).filter((child) =>
+      hasValue(child.width),
+    );
+
+    if (childrenWithWidth.length === 0) {
+      return null;
+    }
+
+    return {
+      childMatches: childrenWithWidth.length,
+      matchingChildUids: childrenWithWidth.map((child) => child._uid),
+    };
+  },
+};
+```
+
+Run it by query name:
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --all \
+  --query flex-group-width-child
+```
+
+Or run it by path and write the full report:
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --startsWith landing-pages \
+  --query ./src/storyblok-queries/flex-group-width-child.sb.query.js \
+  --outputPath sbmig/usage/flex-group-width-child.json
+```
+
+### Selectors
+
+Pass exactly one selector:
+
+| Selector | Type | Effect |
+| --- | --- | --- |
+| `--all` | boolean | Inspect all non-folder stories. |
+| `--withSlug` | repeatable string | Inspect exact story `full_slug` values. |
+| `--startsWith` | string | Inspect stories whose `full_slug` starts with the prefix. |
+
+### Options
+
+| Flag | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `--from` | string | configured `spaceId` | Source space ID to inspect. Pass it explicitly for repeatable reports. |
+| `--query` | string | none | Query file name or direct path. Required. |
+| `--outputPath` | string | none | Write the JSON report to this path. |
+
+### Output
+
+The command prints a summary:
+
+```txt
+Component usage inspection
+Space: 12345
+Query: flex-group-width-child
+Stories scanned: 1240
+Stories matched: 37
+Total matches: 52
+Matches by story:
+- home: 2
+- campaign/summer: 1
+```
+
+When `--outputPath` is passed, the JSON report includes:
+
+```txt
+queryName
+spaceId
+generatedAt
+filters
+totals.storiesScanned
+totals.storiesMatched
+totals.matches
+matches[]
+```
+
+Each match includes story identifiers, component name, `_uid`, path, optional
+parent component metadata, and any details returned from the query.
+
+### Invalid combinations
+
+| Combination | Result |
+| --- | --- |
+| Missing `--query` | Rejected. |
+| Missing `--all`, `--withSlug`, and `--startsWith` | Rejected. |
+| More than one selector family | Rejected. |
+| `--dry-run` | Not supported. The command is already read-only. |
+
+Use this command for inspection and audit work. Do not use it to migrate,
+publish, update, or delete Storyblok content.
+
 ## language-publish-state
 
 ```bash

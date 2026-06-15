@@ -137,3 +137,13 @@ sbmig/language-publish-state/<name>.json
 ```
 
 `story-versions --outputPath` writes exactly to the path you pass.
+
+`inspect component-usage --outputPath` writes exactly to the path you pass:
+
+```txt
+sbmig/usage/flex-group-width-child.json
+```
+
+The report contains query metadata, filters, totals, and one row per component
+usage match. Without `--outputPath`, `inspect component-usage` only prints a
+console summary.

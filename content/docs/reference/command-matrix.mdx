@@ -78,6 +78,9 @@ Preset migration constraints:
 
 | Command form | Required selector | Optional flags | Writes Storyblok |
 | --- | --- | --- | --- |
+| `sb-mig inspect component-usage --from <space> --all --query <query>` | `--all`, `--query` | `--outputPath` | No |
+| `sb-mig inspect component-usage --from <space> --withSlug <slug> --query <query>` | one or more `--withSlug`, `--query` | `--outputPath` | No |
+| `sb-mig inspect component-usage --from <space> --startsWith <prefix> --query <query>` | `--startsWith`, `--query` | `--outputPath` | No |
 | `sb-mig language-publish-state --from <space>` | `--from` | `--accessToken`, `--languages`, `--withSlug`, `--startsWith`, `--fileName`, `--outputPath` | No |
 | `sb-mig story-versions --from <space> --storyId <id>` | `--from`, `--storyId` | `--showContent`, `--page`, `--perPage`, `--raw`, `--outputPath` | No |
 | `sb-mig story-versions --from <space> --withSlug <slug>` | `--from`, `--withSlug` | `--showContent`, `--page`, `--perPage`, `--raw`, `--outputPath` | No |
@@ -85,6 +88,18 @@ Preset migration constraints:
 | `sb-mig published-layer-export --from <space> --storyId <id>` | `--from`, one or more `--storyId` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
 | `sb-mig published-layer-export --from <space> --withSlug <slug>` | `--from`, one or more `--withSlug` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
 | `sb-mig published-layer-export --from <space> --startsWith <prefix>` | `--from`, `--startsWith` | `--fileName`, `--outputPath`, `--versionsPerPage`, `--maxVersionPages` | No |
+
+Inspection constraints:
+
+| Combination | Status |
+| --- | --- |
+| `inspect component-usage --query <query> --all` | Valid. Scans all non-folder stories. |
+| `inspect component-usage --query <query> --withSlug <slug>` | Valid. `--withSlug` is repeatable. |
+| `inspect component-usage --query <query> --startsWith <prefix>` | Valid. Scans non-folder stories under a prefix. |
+| `inspect component-usage --all --withSlug <slug>` | Rejected. Pass exactly one story selection mode. |
+| `inspect component-usage --all --startsWith <prefix>` | Rejected. Pass exactly one story selection mode. |
+| `inspect component-usage` without `--query` | Rejected. Query file name or path is required. |
+| `inspect component-usage --dry-run` | Not supported. The command is already read-only. |
 
 ## backup, revert, remove
 
