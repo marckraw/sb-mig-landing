@@ -59,6 +59,16 @@ sb-mig language-publish-state --from 12345 --languages all --fileName baseline
 sb-mig published-layer-export --from 12345 --startsWith blog/ --fileName blog-layers
 ```
 
+When you have a component usage query file, run the beta inspection command
+without writing to Storyblok:
+
+```bash
+sb-mig inspect component-usage \
+  --from 12345 \
+  --all \
+  --query flex-group-width-child
+```
+
 ## First safe write preview
 
 Run migrations with `--dry-run` before a real write:
