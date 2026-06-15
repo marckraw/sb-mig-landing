@@ -7,7 +7,7 @@ export async function GET() {
   const lines = [
     "# sb-mig",
     "",
-    "Storyblok migration and synchronization toolkit with an auditable CLI.",
+    "Storyblok operations CLI for schema sync, content movement, migrations, and audit artifacts.",
     "",
     "## Primary Documentation",
     "",

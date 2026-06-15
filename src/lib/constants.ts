@@ -50,27 +50,6 @@ export const FEATURES = [
   },
 ] as const;
 
-export const ROADMAP_ITEMS = [
-  {
-    quarter: "Now",
-    title: "CLI operating manual",
-    description:
-      "Document the full command surface for schema sync, content sync, inspection, backups, and migrations.",
-  },
-  {
-    quarter: "Next",
-    title: "Source-verified command matrix",
-    description:
-      "Keep docs synced with CLI help output, source-level command descriptions, and write/read behavior.",
-  },
-  {
-    quarter: "Later",
-    title: "Storyblok operations playbooks",
-    description:
-      "Publish practical guides for schema governance, environment syncs, localization checks, and safe content releases.",
-  },
-] as const;
-
 export const CAPABILITIES = [
   "Component schemas",
   "Datasources and roles",

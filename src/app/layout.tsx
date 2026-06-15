@@ -14,13 +14,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "sb-mig — Storyblok Migration Toolkit",
+  title: "sb-mig — Storyblok Operations CLI",
   description:
-    "sb-mig is a Storyblok migration and synchronization toolkit with dry-run artifacts, published-layer preservation, and an auditable CLI.",
+    "sb-mig syncs Storyblok schemas, configuration, stories, assets, and migrations from an auditable CLI.",
   openGraph: {
-    title: "sb-mig — Storyblok Migration Toolkit",
+    title: "sb-mig — Storyblok Operations CLI",
     description:
-      "Sync Storyblok schemas, run safer content migrations, and audit every operation from code.",
+      "Sync Storyblok schemas, move content safely, run migrations, and audit every operation from code.",
     type: "website",
   },
 };
