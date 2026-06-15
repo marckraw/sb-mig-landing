@@ -59,7 +59,7 @@ export function Newsletter() {
       if (result.fallback && result.mailtoUrl) {
         window.location.href = result.mailtoUrl;
         showStatus(
-          "No endpoint configured. Opened your mail app to complete signup.",
+          "Resend is not configured yet. Opened your mail app to complete signup.",
           "warning"
         );
       } else {
