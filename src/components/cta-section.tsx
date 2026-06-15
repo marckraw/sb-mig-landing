@@ -17,21 +17,21 @@ export function CtaSection() {
         className="mx-auto max-w-3xl text-center"
       >
         <h2 className="text-3xl font-bold md:text-4xl lg:text-5xl">
-          Start with a{" "}
-          <GradientText>dry run</GradientText>
+          Start with the{" "}
+          <GradientText>command surface</GradientText>
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-lg text-subtext">
-          Read the safe migration guide, then run the command that writes
-          evidence instead of changing production.
+          Use the CLI reference to choose the right sync, inspection, backup, or
+          migration workflow before touching a Storyblok space.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            href="/docs/guides/safe-content-migration"
+            href="/docs/reference/cli"
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-accent px-8 py-3.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 hover:scale-[1.02] active:scale-[0.98]"
           >
             <BookOpen className="w-4 h-4" />
-            Safe migration guide
+            CLI reference
           </Link>
           <a
             href={REPO_URL}

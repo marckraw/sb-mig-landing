@@ -18,7 +18,7 @@ export function Footer() {
         </div>
 
         <p className="text-sm text-subtext text-center md:text-left">
-          Storyblok migrations with dry-run evidence and audit trails.
+          Storyblok schema sync, content operations, and auditable migrations.
         </p>
 
         <div className="flex items-center gap-6">

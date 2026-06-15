@@ -14,8 +14,9 @@ export function Features() {
           <GradientText>matter</GradientText>
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-subtext">
-          Schema syncs are only part of the story. The critical path is making
-          production content migrations explainable before and after they run.
+          The Storyblok Management API covers content and configuration, while
+          the Delivery API serves content through the CDN. sb-mig focuses on the
+          operational surface teams need to review, repeat, and run safely.
         </p>
       </div>
 

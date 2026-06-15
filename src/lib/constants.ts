@@ -13,68 +13,68 @@ export const NAV_LINKS = [
 
 export const FEATURES = [
   {
-    icon: Shield,
-    title: "Dry-run first migrations",
+    icon: Code,
+    title: "Component schemas from code",
     description:
-      "Preview selected stories, transformed output, publication plans, and changed payloads before any Storyblok write happens.",
+      "Sync Storyblok components and presets from version-controlled schema files instead of hand-copying Visual Editor changes.",
   },
   {
     icon: RefreshCw,
-    title: "Preserve published layers",
+    title: "Space-to-space operations",
     description:
-      "Migrate dirty published stories without accidentally publishing saved editor drafts.",
-  },
-  {
-    icon: Languages,
-    title: "Language-aware publishing",
-    description:
-      "Inspect translated publish state and publish only languages that were already live before the migration.",
-  },
-  {
-    icon: FileText,
-    title: "Audit artifacts",
-    description:
-      "Keep JSON summaries, before/after payloads, publication plans, and JSONL run logs with every release.",
-  },
-  {
-    icon: Code,
-    title: "Code-first schemas",
-    description:
-      "Sync Storyblok component schemas, datasources, roles, plugins, and presets from version-controlled files.",
+      "Move stories and assets between Storyblok spaces or local files with explicit direction, backup, and confirmation behavior.",
   },
   {
     icon: Terminal,
-    title: "Scriptable operations",
+    title: "Configuration sync",
     description:
-      "Run repeatable Storyblok workflows locally, in CI, or as part of a controlled release process.",
+      "Keep datasources, roles, and field plugins aligned across environments through repeatable CLI commands.",
+  },
+  {
+    icon: Shield,
+    title: "Dry-run evidence",
+    description:
+      "Preview supported Storyblok writes before they happen, especially for schema syncs and production content changes.",
+  },
+  {
+    icon: FileText,
+    title: "Auditable migrations",
+    description:
+      "Run content and preset migrations with JSON summaries, before/after payloads, publication plans, and JSONL logs.",
+  },
+  {
+    icon: Languages,
+    title: "Publication-state checks",
+    description:
+      "Inspect published layers and translated publish state before deciding what should be saved, published, or preserved.",
   },
 ] as const;
 
 export const ROADMAP_ITEMS = [
   {
     quarter: "Now",
-    title: "CLI and migration reference",
+    title: "CLI operating manual",
     description:
-      "Document the command surface, high-risk flags, dry-run artifacts, and safe production workflows.",
+      "Document the full command surface for schema sync, content sync, inspection, backups, and migrations.",
   },
   {
     quarter: "Next",
-    title: "Generated command matrix",
+    title: "Source-verified command matrix",
     description:
-      "Keep docs synced with CLI help output and source-level command descriptions.",
+      "Keep docs synced with CLI help output, source-level command descriptions, and write/read behavior.",
   },
   {
     quarter: "Later",
-    title: "Use-case playbooks",
+    title: "Storyblok operations playbooks",
     description:
-      "Publish practical migration stories for translated content, Storyblok space duplication, and Backpack upgrades.",
+      "Publish practical guides for schema governance, environment syncs, localization checks, and safe content releases.",
   },
 ] as const;
 
 export const CAPABILITIES = [
-  "Dry-run artifacts",
-  "Published layer preservation",
-  "Language publish-state maps",
-  "Code-first schema sync",
-  "JSONL migration logs",
+  "Component schemas",
+  "Datasources and roles",
+  "Stories and assets",
+  "Dry-run plans",
+  "Migration logs",
 ] as const;

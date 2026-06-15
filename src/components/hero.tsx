@@ -9,7 +9,7 @@ import { GradientText } from "./ui/gradient-text";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
+    <section className="relative overflow-hidden pt-24 pb-12 md:pt-28">
       <div className="absolute inset-0 bg-grid" />
       <div className="absolute inset-0 hero-glow" />
 
@@ -29,18 +29,18 @@ export function Hero() {
               className="h-6 w-6 rounded"
               priority
             />
-            Storyblok migrations you can inspect before you run
+            Schema sync, space operations, and safe migrations
           </div>
 
-          <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl lg:mx-0 lg:text-7xl">
-            Safer Storyblok migrations with{" "}
-            <GradientText>proof on disk.</GradientText>
+          <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl lg:mx-0">
+            Storyblok schemas and content operations from{" "}
+            <GradientText>code.</GradientText>
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtext md:text-xl lg:mx-0">
-            sb-mig syncs Storyblok schemas from code and runs auditable content
-            migrations with dry-run artifacts, published-layer preservation, and
-            language-aware publishing.
+            sb-mig is a CLI for syncing components, roles, datasources, plugins,
+            stories, assets, and presets across Storyblok spaces, with dry-run
+            evidence when production content is involved.
           </p>
 
           <motion.div
@@ -88,36 +88,36 @@ export function Hero() {
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-          className="rounded-2xl border border-surface bg-mantle/90 p-4 shadow-2xl shadow-black/30"
+          className="hidden rounded-2xl border border-surface bg-mantle/90 p-4 shadow-2xl shadow-black/30 lg:block"
         >
           <div className="mb-4 flex items-center gap-2 border-b border-surface pb-3">
             <span className="h-3 w-3 rounded-full bg-red" />
             <span className="h-3 w-3 rounded-full bg-yellow" />
             <span className="h-3 w-3 rounded-full bg-green" />
-            <span className="ml-3 font-mono text-xs text-subtext">dry-run</span>
+            <span className="ml-3 font-mono text-xs text-subtext">schema-sync</span>
           </div>
           <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-6 text-text">
-{`$ sb-mig migrate content --all \\
-  --from 12345 --to 12345 \\
-  --migration normalize-design \\
-  --publicationMode preserve-layers \\
+{`$ sb-mig sync components --all --presets \\
   --dry-run
 
-✓ selected 84 stories
-✓ migrated draft/current layer
-✓ migrated published layer
-✓ wrote publication plan
-✓ no API changes were made`}
+✓ discovered 42 component schemas
+✓ compared remote Management API state
+✓ planned component and preset updates
+✓ no Storyblok writes were made
+
+$ sb-mig sync datasources --all --dry-run
+✓ checked datasource definitions
+✓ ready for CI review`}
           </pre>
           <div className="mt-5 rounded-xl border border-surface bg-base p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
               <Package className="h-4 w-4 text-brand" />
-              Artifacts
+              Covers
             </div>
             <div className="grid gap-2 font-mono text-xs text-subtext">
-              <span>dry-run--release---publication-plan-summary.json</span>
-              <span>dry-run--release---published-layer-summary.json</span>
-              <span>release---story-migration-run-log.jsonl</span>
+              <span>components + presets</span>
+              <span>roles + datasources + plugins</span>
+              <span>stories + assets + migrations</span>
             </div>
           </div>
         </motion.div>

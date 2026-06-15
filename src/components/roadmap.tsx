@@ -14,7 +14,7 @@ export function Roadmap() {
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-subtext">
           The site is moving from a landing page into the operating manual for
-          Storyblok migration work.
+          Storyblok schema, content, and environment operations.
         </p>
       </div>
 
@@ -26,8 +26,8 @@ export function Roadmap() {
           {ROADMAP_ITEMS.map((item, i) => (
             <motion.div
               key={item.quarter}
-              initial={{ opacity: 0, x: i % 2 === 0 ? -32 : 32 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.5, delay: 0.1 }}
               className={`flex items-center gap-8 md:gap-16 ${

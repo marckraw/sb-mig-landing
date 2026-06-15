@@ -92,8 +92,8 @@ export function Newsletter() {
             <GradientText>Release notes</GradientText> signup
           </h2>
           <p className="mb-8 text-subtext">
-            Get updates about sb-mig releases, migration patterns, and new
-            documentation.
+            Get updates about sb-mig releases, schema sync patterns, content
+            operations, and new documentation.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
