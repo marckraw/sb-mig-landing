@@ -5,6 +5,7 @@ import {
   DocsPage,
   DocsTitle,
 } from "fumadocs-ui/page";
+import { getMDXComponents } from "@/components/mdx";
 import { source } from "@/lib/source";
 
 type PageProps = {
@@ -28,7 +29,7 @@ export default async function Page({ params }: PageProps) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <Mdx />
+        <Mdx components={getMDXComponents()} />
       </DocsBody>
     </DocsPage>
   );
