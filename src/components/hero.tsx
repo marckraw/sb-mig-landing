@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { BookOpen, Github, Package } from "lucide-react";
 import { REPO_URL, CAPABILITIES } from "@/lib/constants";
 import { GradientText } from "./ui/gradient-text";
+import { Logo } from "./logo";
 
 export function Hero() {
   return (
@@ -21,14 +21,7 @@ export function Hero() {
           className="text-center lg:text-left"
         >
           <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-surface bg-mantle/80 px-4 py-2 text-sm text-subtext">
-            <Image
-              src="/sb-mig-logo.png"
-              alt="sb-mig logo"
-              width={24}
-              height={24}
-              className="h-6 w-6 rounded"
-              priority
-            />
+            <Logo className="h-6 w-6 rounded" />
             Schema sync, space operations, and safe migrations
           </div>
 
