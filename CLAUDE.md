@@ -1,16 +1,5 @@
-# AI Agent Instructions
+@AGENTS.md
 
-Use conventional commits for repository changes, matching the existing commit style.
+## Claude Code
 
-## LLM-ready docs maintenance
-
-The docs site is intentionally LLM-readable. Fumadocs content under `content/docs` feeds `/llms.txt`, `/llms-full.txt`, per-page Markdown routes such as `/docs/quickstart.md`, and `sitemap.xml`.
-
-For ordinary documentation edits, update the relevant MDX/meta files only; the LLM routes should update automatically. Run `npm run build`, `npm run lint`, and `npm run verify:llm-docs` before shipping docs changes.
-
-Update LLM-specific code only when the docs delivery contract changes:
-
-- Update `src/lib/llm-docs.ts` when adding/removing docs sections that should be excluded from LLM output, or when changing Markdown/index behavior.
-- Update `src/lib/site.ts` when the canonical public domain changes.
-- Update `scripts/verify-llm-docs.mjs` when LLM routes, required assertions, or verification coverage changes.
-- Keep `sb-mig` README/package metadata aligned if public docs URLs or LLM entrypoints change.
+Claude Code reads this file at session start. `AGENTS.md` is the shared source of truth for this repository's AI-agent instructions; keep shared guidance there so Claude and other coding agents stay aligned.
