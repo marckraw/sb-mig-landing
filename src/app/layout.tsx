@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { RootProvider } from "fumadocs-ui/provider/next";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://sb-mig-landing.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: "sb-mig — Storyblok Operations CLI",
   description:
     "sb-mig syncs Storyblok schemas, configuration, stories, assets, and migrations from an auditable CLI.",
@@ -35,6 +36,12 @@ export const metadata: Metadata = {
       },
     ],
     type: "website",
+  },
+  alternates: {
+    canonical: "/",
+  },
+  other: {
+    "llms-txt": "/llms.txt",
   },
 };
 
