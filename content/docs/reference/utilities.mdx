@@ -111,8 +111,10 @@ ancestor folders, and assets inside the selected subtree.
 `--referenced-by-stories` requires `--source`; it scans the selected story or
 folder scope with source component schemas and copies only source-space assets
 referenced by that scope. `copy assets` matches by manifest first, then by safe
-target folder path or unique target asset file name before creating. Apply mode
-writes JSONL manifests under `.sb-mig/copy/<source>/<target>/`.
+target folder path or unique target asset file name before creating. `--all`
+paginates through source assets and asset folders before planning or applying,
+so large spaces are not limited to the first Storyblok Management API page.
+Apply mode writes JSONL manifests under `.sb-mig/copy/<source>/<target>/`.
 
 ## discover
 
