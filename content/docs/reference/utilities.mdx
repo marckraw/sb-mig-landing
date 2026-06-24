@@ -11,34 +11,110 @@ This page covers commands that do not fit the main sync/migrate/backup groups.
 
 ```bash
 sb-mig copy stories \
-  --sourceSpace 12345 \
-  --targetSpace 67890 \
-  --what blog/post-1 \
-  --where imported
+  --from 12345 \
+  --to 67890 \
+  --source blog/post-1 \
+  --destination imported
+
+sb-mig copy stories \
+  --from 12345 \
+  --to 67890 \
+  --source blog \
+  --destination imported \
+  --with-assets
+
+sb-mig copy assets \
+  --from 12345 \
+  --to 67890 \
+  --all
+
+sb-mig copy assets \
+  --from 12345 \
+  --to 67890 \
+  --asset hero.jpg
+
+sb-mig copy assets \
+  --from 12345 \
+  --to 67890 \
+  --assetFolder Marketing/Heroes
+
+sb-mig copy assets \
+  --from 12345 \
+  --to 67890 \
+  --referenced-by-stories \
+  --source blog
+
+sb-mig copy assets \
+  --from 12345 \
+  --to 67890 \
+  --all \
+  --dry-run \
+  --outputPath sbmig/copy-plans/assets-copy.json
 ```
 
 `copy stories` copies a source story or folder tree into a target folder.
+`copy assets` copies or plans all assets and asset folders. Apply mode writes
+asset folders and assets to the target space, finalizes asset uploads, and stores
+durable source-to-target manifests under `.sb-mig/copy/<source>/<target>/`.
 
 ### Strategies
 
-| `--what` value | Strategy | Behavior |
-| --- | --- | --- |
-| `blog/post-1` | `story` | Copy one story and attach it under `--where`. |
-| `blog` | `folder_with_root` | Copy the folder story and all descendants under `--where`. |
-| `blog/*` | `folder_recursive` | Copy the folder children under `--where` without copying the folder root. |
+| Story selector              | Mode       | Behavior                                                                        |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------- |
+| `--source blog/post-1`      | `subtree`  | Copy one story and attach it under `--destination`.                             |
+| `--source blog`             | `subtree`  | Copy the folder story and all descendants under `--destination`.                |
+| `--source blog/*`           | `children` | Copy the folder children under `--destination` without copying the folder root. |
+| `--source blog --mode self` | `self`     | Copy only the selected story or folder shell.                                   |
 
 ### Options
 
-| Flag | Type | Effect |
-| --- | --- | --- |
-| `--sourceSpace` | string | Source Storyblok space ID. Falls back to configured `spaceId`. |
-| `--targetSpace` | string | Target Storyblok space ID. Falls back to configured `spaceId`. |
-| `--what` | string | Source story or folder `full_slug`. Use `folder/*` for children-only folder copy. |
-| `--where` | string | Existing target folder `full_slug` to attach copied stories under. |
+| Flag            | Type                             | Effect                                                                                                   |
+| --------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--from`        | string                           | Source Storyblok space ID. Falls back to configured `spaceId`.                                           |
+| `--to`          | string                           | Target Storyblok space ID. Falls back to configured `spaceId`.                                           |
+| `--source`      | string                           | Source story or folder `full_slug`. Use `folder/*` for children-only story copy.                         |
+| `--destination` | string                           | Existing target folder `full_slug` to attach copied stories under. Omit, `/`, or `root` for target root. |
+| `--mode`        | `subtree`, `children`, or `self` | Story copy mode. Defaults to `subtree`; `folder/*` defaults to `children`.                               |
+| `--with-assets` | boolean                          | For `copy stories`, copy referenced assets first and relink copied stories to target asset references.   |
+| `--all`         | boolean                          | Select all assets and asset folders. Use one asset selector family per run.                              |
+| `--asset`       | string                           | Select one source asset by numeric ID, exact Storyblok asset URL, or unique file name. Repeatable.       |
+| `--assetFolder` | string                           | Select one source asset folder by numeric ID or path. Includes descendants and assets in that subtree.   |
+| `--referenced-by-stories` | boolean               | For `copy assets`, select source-space assets referenced by the selected story/folder scope.             |
+| `--dry-run`     | boolean                          | Preview paths, manifest-mapped references, and likely conflicts without Storyblok writes.                |
+| `--outputPath`  | string                           | Write a JSON dry-run or apply report to a local path.                                                    |
 
-`--what` must resolve to an existing story or folder. `--where` must resolve to
-an existing folder in the target space. The command writes copied stories to the
-target space and currently logs internal strategy details while it runs.
+Legacy story-copy aliases still work: `--sourceSpace` for `--from`,
+`--targetSpace` for `--to`, `--what` for `--source`, and `--where` for
+`--destination`.
+
+`--source` must resolve to an existing story or folder. `--destination` must
+resolve to an existing folder in the target space unless it is omitted, `/`, or
+`root`. `copy stories` writes copied stories to the target space unless
+`--dry-run` is passed and writes story ID/UUID manifests under
+`.sb-mig/copy/<source>/<target>/` during apply. It also rewrites mapped asset
+and story references in copied target story content after manifests exist.
+`copy stories --with-assets` scans the selected stories with source component
+schemas, copies referenced assets and their asset-folder ancestors first, then
+uses the manifests to relink copied story asset fields to target asset IDs and
+filenames. Dry-run output classifies asset references as `mapped`, `planned`, or
+`unresolved` and separates reference occurrences from unique assets in the JSON
+`assetReferenceSummary`. It also reports foreign Storyblok asset space IDs
+detected from asset URLs without trying to copy from those spaces. With
+`--with-assets`, referenced assets and folders are marked as `match` when an
+existing manifest mapping can be reused. Without `--with-assets`, run
+`copy assets` first when copied stories should point to target-space assets.
+`copy assets` writes target asset folders/assets unless `--dry-run` is passed.
+It supports `--all`, `--asset`, `--assetFolder`, and
+`--referenced-by-stories`. `--asset` includes the selected asset's folder
+ancestors. `--assetFolder` includes the selected folder, its descendants,
+ancestor folders, and assets inside the selected subtree.
+`--referenced-by-stories` requires `--source`; it scans the selected story or
+folder scope with source component schemas and copies only source-space assets
+referenced by that scope. `copy assets` matches by manifest first, then by safe
+target folder path or unique target asset file name before creating. `--all`
+paginates through source assets and asset folders before planning or applying,
+so large spaces are not limited to the first Storyblok Management API page.
+Apply mode writes JSONL manifests under `.sb-mig/copy/<source>/<target>/`.
 
 ## discover
 
@@ -50,11 +126,11 @@ sb-mig discover components --all --write
 sb-mig discover components --all --write --file all-components
 ```
 
-| Flag | Type | Effect |
-| --- | --- | --- |
-| `--all` | boolean | Discover all local and external component schema files. |
-| `--write` | boolean | Write discovered component names to a local file. |
-| `--file` | string | Output file name when `--write` is passed. |
+| Flag      | Type    | Effect                                                  |
+| --------- | ------- | ------------------------------------------------------- |
+| `--all`   | boolean | Discover all local and external component schema files. |
+| `--write` | boolean | Write discovered component names to a local file.       |
+| `--file`  | string  | Output file name when `--write` is passed.              |
 
 Without `--write`, the command prints discovered component metadata. With
 `--write`, it creates or overwrites the component list file.
@@ -78,10 +154,10 @@ This command is specific to Backpack upgrade flows. It compares a previous
 Backpack version with a target version and prints recommended `migrate content`
 and `migrate presets` commands.
 
-| Flag | Type | Effect |
-| --- | --- | --- |
-| `--from` | string | Previous package version. Required. |
-| `--to` | string | Target package version. Optional. Falls back to installed `@ef-global/backpack` dependency version from `package.json`. |
+| Flag     | Type   | Effect                                                                                                                  |
+| -------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `--from` | string | Previous package version. Required.                                                                                     |
+| `--to`   | string | Target package version. Optional. Falls back to installed `@ef-global/backpack` dependency version from `package.json`. |
 
 The command reads `applied-backpack-migrations.json` when present and reads
 `package.json` when `--to` is omitted. It does not call Storyblok and does not
@@ -105,12 +181,12 @@ sb-mig init project \
 `init project` creates a local `.env` and updates the Storyblok space preview
 domain.
 
-| Flag | Type | Effect |
-| --- | --- | --- |
-| `--spaceId` | string | Storyblok space ID. Required. |
-| `--oauthToken` | string | Management API OAuth token. Required. |
-| `--region` | `eu`, `us`, or `cn` | Storyblok region. Required. |
-| `--gtmToken` | string | Optional Google Tag Manager token. Defaults to `put-your-gtm-token-here`. |
+| Flag           | Type                | Effect                                                                    |
+| -------------- | ------------------- | ------------------------------------------------------------------------- |
+| `--spaceId`    | string              | Storyblok space ID. Required.                                             |
+| `--oauthToken` | string              | Management API OAuth token. Required.                                     |
+| `--region`     | `eu`, `us`, or `cn` | Storyblok region. Required.                                               |
+| `--gtmToken`   | string              | Optional Google Tag Manager token. Defaults to `put-your-gtm-token-here`. |
 
 The generated `.env` includes region URLs, access token, OAuth token, preview
 secret, space ID, translation strategy, and GTM ID. The preview domain is set to
