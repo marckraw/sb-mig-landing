@@ -93,6 +93,10 @@ resolve to an existing folder in the target space unless it is omitted, `/`, or
 `--dry-run` is passed and writes story ID/UUID manifests under
 `.sb-mig/copy/<source>/<target>/` during apply. It also rewrites mapped asset
 and story references in copied target story content after manifests exist.
+Story applies create or match unpublished target shells first, write the
+source-to-target manifest, then save the full copied content with manifest-backed
+asset and story reference rewrites. Publication behavior is intentionally
+save-only in this flow until explicit publication controls are added.
 `copy stories --with-assets` scans the selected stories with source component
 schemas, copies referenced assets and their asset-folder ancestors first, then
 uses the manifests to relink copied story asset fields to target asset IDs and
