@@ -21,7 +21,8 @@ sb-mig copy stories \
   --to 67890 \
   --source blog \
   --destination imported \
-  --with-assets
+  --with-assets \
+  --publicationMode preserve-layers
 
 sb-mig copy assets \
   --from 12345 \
@@ -76,6 +77,8 @@ durable source-to-target manifests under `.sb-mig/copy/<source>/<target>/`.
 | `--destination` | string                           | Existing target folder `full_slug` to attach copied stories under. Omit, `/`, or `root` for target root. |
 | `--mode`        | `subtree`, `children`, or `self` | Story copy mode. Defaults to `subtree`; `folder/*` defaults to `children`.                               |
 | `--with-assets` | boolean                          | For `copy stories`, copy referenced assets first and relink copied stories to target asset references.   |
+| `--publicationMode` | `preserve-layers`, `collapse-draft`, or `save-only` | For `copy stories`, preserve Storyblok publication state after full rewritten content is saved. Default: `preserve-layers`. |
+| `--publicationLanguages` | `default`, `all`, or comma-separated codes | Language scope to publish when `publicationMode` publishes stories. Default: `all`. |
 | `--all`         | boolean                          | Select all assets and asset folders. Use one asset selector family per run.                              |
 | `--asset`       | string                           | Select one source asset by numeric ID, exact Storyblok asset URL, or unique file name. Repeatable.       |
 | `--assetFolder` | string                           | Select one source asset folder by numeric ID or path. Includes descendants and assets in that subtree.   |
@@ -95,8 +98,16 @@ resolve to an existing folder in the target space unless it is omitted, `/`, or
 and story references in copied target story content after manifests exist.
 Story applies create or match unpublished target shells first, write the
 source-to-target manifest, then save the full copied content with manifest-backed
-asset and story reference rewrites. Publication behavior is intentionally
-save-only in this flow until explicit publication controls are added.
+asset and story reference rewrites. Shells are always created as save-only drafts
+so placeholder shells are never published.
+
+`copy stories` then applies `--publicationMode`. `preserve-layers` is the
+default: clean published source stories are published in the target; dirty
+published source stories copy the source published version, publish that target
+layer, then restore the source draft/current layer as save-only. `collapse-draft`
+publishes published source stories from their current source JSON. `save-only`
+never publishes copied stories and rejects `--publicationLanguages`.
+
 `copy stories --with-assets` scans the selected stories with source component
 schemas, copies referenced assets and their asset-folder ancestors first, then
 uses the manifests to relink copied story asset fields to target asset IDs and

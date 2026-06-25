@@ -136,9 +136,9 @@ Inspection constraints:
 
 | Command form | Required selector | Optional flags | Writes Storyblok |
 | --- | --- | --- | --- |
-| `sb-mig copy stories --source <story> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy stories --source <folder> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy stories --source <folder>/* --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <story> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--with-assets`, `--publicationMode`, `--publicationLanguages`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <folder> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--with-assets`, `--publicationMode`, `--publicationLanguages`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <folder>/* --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--with-assets`, `--publicationMode`, `--publicationLanguages`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig copy assets --all` | `--all` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig copy assets --asset <id-or-file>` | `--asset` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig copy assets --assetFolder <id-or-path>` | `--assetFolder` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
