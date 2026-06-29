@@ -49,6 +49,7 @@ Content sync directions:
 | --- | --- | --- | --- |
 | `sb-mig migrate content --all` | `--all`, `--migration` | `--from`, `--to`, `--withSlug`, `--startsWith`, `--migrate-from`, `--fromFilePath`, `--publicationMode`, `--publicationLanguages`, `--languagePublishStatePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
 | `sb-mig migrate presets --all` | `--all`, exactly one `--migration` | `--from`, `--to`, `--migrate-from`, `--fromFilePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
+| `sb-mig migrate continue` | none (auto-discovers the dry-run manifest) | `--manifest`, `--yes` | Yes (replays a prior `content --dry-run`) |
 
 Content migration constraints:
 

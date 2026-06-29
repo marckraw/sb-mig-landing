@@ -8,11 +8,13 @@ description: Run content and preset migration pipelines.
 ```bash
 sb-mig migrate content --all --from <space> --to <space> --migration <name>
 sb-mig migrate presets --all --from <space-or-file> --to <space> --migration <name>
+sb-mig migrate continue
 ```
 
 `migrate` loads local migration config files, applies them in memory, writes
 artifacts, and then writes changed stories or presets unless `--dry-run` is
-passed.
+passed. `migrate continue` finishes a previous `--dry-run` by replaying its
+saved result to Storyblok without re-running the preparation phase.
 
 ## Shared flags
 
@@ -255,6 +257,57 @@ sb-mig migrate presets --all \
 Before a real preset run, sb-mig backs up all remote presets to
 `presets-backup`.
 
+## continue
+
+`continue` finishes a previous `migrate content --dry-run` by writing its
+already-computed result to Storyblok. It skips the expensive preparation a dry
+run already did — pulling stories, applying mappers in memory, and fetching
+published layers and language state — and replays only the writes. On large
+spaces this turns the "dry run, then real run" workflow from roughly double the
+cost into one preparation plus a fast write, so always running a dry run first
+no longer doubles the wait.
+
+`continue` assumes a content freeze between the dry run and the continue run.
+The source space must not change in between: continue trusts the dry run's
+result and does not re-read or diff the space (no drift detection).
+
+### Primary form
+
+```bash
+sb-mig migrate continue
+```
+
+`continue` discovers the dry run's continue manifest in `sbmig/migrations`,
+prints a summary of what it will write (space, publication mode, languages,
+story counts, and the artifacts it will use), and prompts for confirmation
+before writing.
+
+### continue-only flags
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--manifest` | string | Continue manifest filename inside `sbmig/migrations`. Only needed when more than one dry-run manifest is present. |
+| `--yes` | boolean | Skip the confirmation prompt for the write. |
+
+### Manifest discovery
+
+| Situation | Behavior |
+| --- | --- |
+| Exactly one continue manifest in `sbmig/migrations` | Used automatically. |
+| More than one | Stops and lists them; pass `--manifest <filename>` to pick one. |
+| None | Errors and points you at `migrate content … --dry-run`. |
+
+### Equivalent to a real run
+
+`continue` writes exactly what a real `migrate content` would: it updates
+`applied-backpack-migrations.json`, performs the same Storyblok writes
+(including the preserve-layers dual-layer write for dirty published stories),
+and writes a migration run log tagged with the originating manifest.
+
+It performs no bulk story fetch, no in-memory migration, no published-layer
+fetch, and no language-state fetch. The only read it still makes is the
+existing per-story safety re-fetch inside the preserve-layers dual-layer write.
+
 ## Artifacts and side effects
 
 For `--migrate-from space` real runs, sb-mig writes a pre-migration backup under
@@ -263,3 +316,9 @@ For `--migrate-from space` real runs, sb-mig writes a pre-migration backup under
 All content and preset runs write migration artifacts under `sbmig/migrations`.
 Dry runs return before Storyblok writes. Real runs also write a JSONL migration
 run log after Storyblok write attempts complete.
+
+A content dry run additionally writes a `*-continue-manifest` file (and, for
+preserve-layers, a `*-dirty-published-records` file) that `migrate continue`
+uses to replay the run. The dry run's `*-input-full` artifacts are the
+pre-migration snapshot for that workflow, since `continue` does not re-read the
+space to take its own backup.
