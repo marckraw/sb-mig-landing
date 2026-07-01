@@ -116,6 +116,38 @@ paginates through source assets and asset folders before planning or applying,
 so large spaces are not limited to the first Storyblok Management API page.
 Apply mode writes JSONL manifests under `.sb-mig/copy/<source>/<target>/`.
 
+### Resilience and failure reporting
+
+`copy stories` apply mode processes the whole selected tree even when individual
+stories fail. If a story update is rejected — for example a `422` when the target
+space schema does not allow a component used in the story — the command records
+the failure, keeps copying the remaining stories, and then exits non-zero at the
+end with a summary of every story that failed. A failing parent keeps its
+already-created target shell, so its descendants are still copied under it. One
+broken story no longer aborts a large copy.
+
+Failed story updates identify the offending component in place: the component
+name, the field it sits in, its parent component, its `_uid`, and its path in the
+story content (for example `content.body[3].tabs[1]`), together with the source
+and target story IDs, so the exact blok can be located.
+
+### Predicting schema rejections in dry-run
+
+`copy stories --dry-run` validates every source component against the target
+space component schema before you apply. The JSON report adds a
+`componentCompatibility` block and a `summary.componentIssues` count, and the
+plan warns when a component would be rejected at write time:
+
+| Warning code                     | Meaning                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| `component_missing_in_target`    | A component used in a source story does not exist in the target space schema.            |
+| `component_not_allowed_in_field` | A component sits in a bloks field whose target schema restricts the allowed components.  |
+
+Each finding records the component, the reason, the source story `full_slug`, the
+field, the parent component, the `_uid`, and the content path. Tag-based field
+whitelists are skipped to avoid false positives, and the check is skipped
+entirely when the target space returns no components.
+
 ## discover
 
 ### Components
