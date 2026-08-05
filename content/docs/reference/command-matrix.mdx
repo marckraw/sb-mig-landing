@@ -48,8 +48,9 @@ Content sync directions:
 | Command form | Required selector | Optional flags | Writes Storyblok |
 | --- | --- | --- | --- |
 | `sb-mig migrate content --all` | `--all`, `--migration` | `--from`, `--to`, `--withSlug`, `--startsWith`, `--migrate-from`, `--fromFilePath`, `--publicationMode`, `--publicationLanguages`, `--languagePublishStatePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
-| `sb-mig migrate presets --all` | `--all`, exactly one `--migration` | `--from`, `--to`, `--migrate-from`, `--fromFilePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
-| `sb-mig migrate continue` | none (auto-discovers the dry-run manifest) | `--manifest`, `--yes` | Yes (replays a prior `content --dry-run`) |
+| `sb-mig migrate presets --all` | `--all`, `--migration` | `--from`, `--to`, `--migrate-from`, `--fromFilePath`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
+| `sb-mig migrate presets <component...>` | component names, `--migration` | `--from`, `--to`, `--migrationComponentAlias`, `--migrationComponents`, `--fileName`, `--dry-run`, `--yes` | Yes unless `--dry-run` |
+| `sb-mig migrate continue` | none (auto-discovers the dry-run manifest) | `--manifest`, `--yes` | Yes (replays a prior `content` or `presets --dry-run`) |
 
 Content migration constraints:
 
@@ -70,10 +71,15 @@ Preset migration constraints:
 | Combination | Status |
 | --- | --- |
 | one `--migration` | Valid. |
-| multiple `--migration` values | Rejected for presets. |
+| multiple `--migration` values | Valid. Applied in order, same as content. |
+| `migrate presets <component...>` | Valid. Narrows the migration's mappers to the named components. |
+| `--from A --to A` | Valid. |
+| `--from A --to B` with `--migrate-from space` | Rejected. Preset writes reuse the source preset IDs, which do not exist in space B. |
+| `--migrate-from file --to B` | Valid. `--from` is a file name, not a space, so the cross-space rule does not apply. |
 | `--publicationMode` | Rejected for presets. |
 | `--publicationLanguages` | Rejected for presets. |
 | `--languagePublishStatePath` | Rejected for presets. |
+| `--withSlug`, `--startsWith` | Ignored for presets. Presets have no slugs. |
 
 ## inspection
 
