@@ -8,6 +8,7 @@ description: Run content and preset migration pipelines.
 ```bash
 sb-mig migrate content --all --from <space> --to <space> --migration <name>
 sb-mig migrate presets --all --from <space-or-file> --to <space> --migration <name>
+sb-mig migrate presets <component...> --from <space> --to <space> --migration <name>
 sb-mig migrate continue
 ```
 
@@ -28,7 +29,7 @@ publicationLanguages, languagePublishStatePath, and fileName.
 | `--fromFilePath` | string | content, presets | Direct path to a stories or presets JSON file when `--migrate-from file` is used. |
 | `--to` | string | content, presets | Target Storyblok space ID. |
 | `--migrate-from` | `space` or `file` | content, presets | Read source items from Storyblok or local JSON. Default: `space`. |
-| `--migration` | repeatable string | content, presets | Migration config name without extension. Content supports multiple ordered values. Presets support one value. |
+| `--migration` | repeatable string | content, presets | Migration config name without extension. Both content and presets support multiple ordered values. |
 | `--migrationComponentAlias` | repeatable string | content, presets | Add mapper aliases. Format: `<migration>:<source>=<alias1>,<alias2>`. |
 | `--migrationComponents` | repeatable string | content, presets | Override exact component scope. Format: `<migration>:<component1>,<component2>`. |
 | `--dry-run` | boolean | content, presets | Apply migration in memory and write artifacts without Storyblok writes. |
@@ -243,29 +244,88 @@ sb-mig migrate presets --all \
   --fromFilePath sbmig/presets/presets-backup.json \
   --to 12345 \
   --migration preset-migration
+
+sb-mig migrate presets text-block sb-section \
+  --from 12345 \
+  --to 12345 \
+  --migration preset-migration \
+  --dry-run
 ```
+
+### Preset selection
+
+`--all` selects every preset in the source space and runs the component mappers
+the migration config defines. Naming components instead selects the same
+presets but narrows the mappers to those components.
+
+Scope a preset run to specific components by naming them instead of passing
+`--all`:
+
+```bash
+sb-mig migrate presets text-block \
+  --from 12345 \
+  --to 12345 \
+  --migration preset-migration
+```
+
+This restricts the migration's mappers to the named components, so every other
+component inside preset data is left alone. It mirrors
+`migrate content --all --migrationComponents`, and it is the preset equivalent
+of the scoped story form.
+
+### Multiple migration steps
+
+Preset migrations run multiple configs in order, exactly like content:
+
+```bash
+sb-mig migrate presets --all \
+  --from 12345 \
+  --to 12345 \
+  --migration migration-a \
+  --migration migration-b \
+  --yes
+```
+
+Each step gets its own pipeline summary entry, and a migration's co-located
+validator runs after that step.
 
 ### Preset constraints
 
 | Constraint | Reason |
 | --- | --- |
-| Exactly one `--migration` value | Preset migration pipelines do not support multiple ordered configs yet. |
+| `--from` must equal `--to` for `--migrate-from space` | Preset writes reuse the source preset IDs. Those IDs do not exist in another space, or belong to unrelated presets there. |
 | `--publicationMode` is rejected | Presets cannot be published. |
 | `--publicationLanguages` is rejected | Presets cannot be published by language. |
 | `--languagePublishStatePath` is rejected | Presets do not use story publish-state maps. |
+| `--withSlug` and `--startsWith` do nothing | Presets have no slugs. The flags are content-only and are ignored rather than rejected. |
 
-Before a real preset run, sb-mig backs up all remote presets to
-`presets-backup`.
+The cross-space rule applies to `--migrate-from space` runs. A
+`--migrate-from file` run is not blocked, because there `--from` is a file name
+rather than a space. sb-mig cannot tell which space a preset JSON file was
+captured from, so restoring a file taken from a *different* space has the same
+ID-mismatch problem and is not detected.
+
+Presets have no draft/published layers and no per-language publish state, so a
+preset run is always recorded as `save-only`. Its continue manifest carries no
+publication mode or languages, and `migrate continue` reports it the same way.
+
+Before a real preset run, sb-mig backs up the `--from` space's presets to
+`sbmig/backup/preset`. No backup is taken for `--dry-run` or
+`--migrate-from file` runs.
 
 ## continue
 
-`continue` finishes a previous `migrate content --dry-run` by writing its
-already-computed result to Storyblok. It skips the expensive preparation a dry
-run already did — pulling stories, applying mappers in memory, and fetching
-published layers and language state — and replays only the writes. On large
-spaces this turns the "dry run, then real run" workflow from roughly double the
-cost into one preparation plus a fast write, so always running a dry run first
-no longer doubles the wait.
+`continue` finishes a previous `migrate content --dry-run` or
+`migrate presets --dry-run` by writing its already-computed result to
+Storyblok. It skips the expensive preparation a dry run already did — pulling
+items, applying mappers in memory, and fetching published layers and language
+state — and replays only the writes. On large spaces this turns the "dry run,
+then real run" workflow from roughly double the cost into one preparation plus
+a fast write, so always running a dry run first no longer doubles the wait.
+
+Preset dry runs write their own `preset-continue-manifest`, and `continue`
+replays them through the preset write path. A preset continue always reports
+`save-only` with no languages, since presets cannot be published.
 
 `continue` assumes a content freeze between the dry run and the continue run.
 The source space must not change in between: continue trusts the dry run's
@@ -297,12 +357,16 @@ before writing.
 | More than one | Stops and lists them; pass `--manifest <filename>` to pick one. |
 | None | Errors and points you at `migrate content … --dry-run`. |
 
+Story and preset manifests are discovered the same way, so a leftover preset
+dry run counts toward the "more than one" case.
+
 ### Equivalent to a real run
 
-`continue` writes exactly what a real `migrate content` would: it updates
+`continue` writes exactly what the real run would: it updates
 `applied-backpack-migrations.json`, performs the same Storyblok writes
-(including the preserve-layers dual-layer write for dirty published stories),
-and writes a migration run log tagged with the originating manifest.
+(including the preserve-layers dual-layer write for dirty published stories, or
+the plain preset update for a preset run), and writes a migration run log
+tagged with the originating manifest.
 
 It performs no bulk story fetch, no in-memory migration, no published-layer
 fetch, and no language-state fetch. The only read it still makes is the
@@ -317,8 +381,8 @@ All content and preset runs write migration artifacts under `sbmig/migrations`.
 Dry runs return before Storyblok writes. Real runs also write a JSONL migration
 run log after Storyblok write attempts complete.
 
-A content dry run additionally writes a `*-continue-manifest` file (and, for
-preserve-layers, a `*-dirty-published-records` file) that `migrate continue`
-uses to replay the run. The dry run's `*-input-full` artifacts are the
+Content and preset dry runs additionally write a `*-continue-manifest` file
+(and, for preserve-layers content runs, a `*-dirty-published-records` file)
+that `migrate continue` uses to replay the run. The dry run's `*-input-full` artifacts are the
 pre-migration snapshot for that workflow, since `continue` does not re-read the
 space to take its own backup.
