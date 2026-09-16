@@ -1,0 +1,504 @@
+---
+title: copy
+description: Copy stories, assets and a whole space schema between Storyblok spaces, with a durable ledger, a PLAN gate and honest failure reports.
+---
+
+# copy
+
+```bash
+sb-mig copy <subcommand> --from <sourceSpaceId> --to <targetSpaceId> [options]
+```
+
+`copy` moves things from one Storyblok space into another and remembers what it
+did. It has five subcommands; this page is their reference as of
+`sb-mig@6.5.0-beta.7`. Run `sb-mig copy --help` for the same facts in the
+terminal.
+
+| Subcommand | What it does | Writes Storyblok |
+| --- | --- | --- |
+| [`copy space`](#copy-space) | Copy a space's schema — languages, component groups, components, presets, datasources and entries — into another existing space. No stories, no assets. | Yes unless `--dry-run` |
+| [`copy stories`](#copy-stories) | Copy one story, a folder subtree, a folder's children or a folder shell, with every reference rewritten to the target. | Yes unless `--dry-run` |
+| [`copy assets`](#copy-assets) | Copy assets and asset folders, all or by selection. | Yes unless `--dry-run` |
+| [`copy relink`](#copy-relink) | Repair references in stories that were already copied, without copying content again. | Yes unless `--dry-run` |
+| [`copy manifests`](#copy-manifests) | Read the ledger back: list, inspect one space pair, or prune it. | Never |
+
+Every subcommand that writes prints a **PLAN block** first and asks before the
+first write. Pass `--yes` to skip the question; without a terminal and without
+`--yes` the command refuses to write. `--dry-run` prints the plan and stops.
+
+The recommended order for a whole space is `copy space` → `copy stories
+--with-assets` → `copy relink` → `copy manifests`. The
+[Copy a space](/docs/guides/copy-a-space) guide walks through it.
+
+## The ledger
+
+Every `copy stories` and `copy assets` apply writes a **ledger**: JSONL files
+that map each source id to the id it became in the target.
+
+```
+<manifestRoot>/copy/<sourceSpaceId>/<targetSpaceId>/
+  manifest.jsonl                # the combined ledger — the only file a copy run reads
+  stories.manifest.jsonl        # per-resource views of the same lines
+  assets.manifest.jsonl
+  asset-folders.manifest.jsonl
+```
+
+`--manifestRoot` defaults to `.sb-mig` in the current directory. One line per
+mapping:
+
+```json
+{"type":"story","source_space_id":"12345","target_space_id":"67890","source_id":611092713,"target_id":220423440598428,"source_uuid":"…","target_uuid":"…","source_full_slug":"blog/post-1","target_full_slug":"blog/post-1","action":"created","created_at":"2026-09-15T19:30:21.552Z"}
+```
+
+`type` is `story`, `asset` or `asset_folder`. `action` is `created` when the
+run made the target item, or `matched_by_target_key` when it adopted one that
+already sat at that path (or, for assets, had that file name).
+
+The ledger is what makes the family safe to rerun:
+
+- A second `copy stories` run over the same selection **resumes**: mapped
+  stories are reused and updated in place, nothing is created twice.
+- References to stories copied in an earlier run — even a run with a different
+  selection — resolve through the ledger, so the site can be copied folder by
+  folder.
+- `copy relink` and `copy manifests` read it; `copy relink` also adds to it.
+
+Keep the ledger directory for as long as the two spaces exist. `--fresh`
+(`copy stories` only) moves every ledger file of the pair aside with a
+timestamp suffix (`manifest.jsonl.2026-09-15T19-30-20-327Z.bak`) and starts
+empty; nothing is deleted. A later `--with-assets` run then starts without the
+archived asset mappings too. `copy manifests --prune` is the only command that
+deletes a ledger.
+
+## copy stories
+
+```bash
+sb-mig copy stories --from 12345 --to 67890 --source blog/post-1 --destination imported
+sb-mig copy stories --from 12345 --to 67890 --source blog --destination imported
+sb-mig copy stories --from 12345 --to 67890 --source blog/* --destination imported
+sb-mig copy stories --from 12345 --to 67890 --source blog --mode self --destination /
+sb-mig copy stories --from 12345 --to 67890 --source blog --source docs --destination /
+sb-mig copy stories --from 12345 --to 67890 --source blog/*,docs --destination /
+sb-mig copy stories --from 12345 --to 67890 --source blog --destination / --with-assets --dry-run --outputPath sbmig/copy-plans/blog.json
+sb-mig copy stories --from 12345 --to 67890 --source blog --destination / --with-assets --yes
+```
+
+### What a run does
+
+1. **Selects** the source stories: each `--source` resolves to a story or
+   folder, expanded by its mode.
+2. **Plans** target paths under `--destination`, checks the ledger and the
+   target for existing paths, classifies every reference in the selected
+   content, scans assets when `--with-assets` is passed, and runs the
+   pre-flights. It prints the PLAN block and asks.
+3. **Creates or adopts shells** for every folder and story, top-down. Shells
+   are saved as drafts; each new mapping is appended to the ledger at once.
+4. **Rewrites and fills**: every selected story's content is rewritten —
+   story ids and uuids, `multilink` ids and `cached_url`s, asset ids and
+   file names, including inside `__i18n__` language fields and richtext marks
+   — through the ledger, then saved into its shell.
+5. **Applies the publication mode** to stories. Folders are never published.
+
+A story whose shell could not be created takes its descendants with it (they
+have no parent to be created under). Every other failure is recorded and the run
+carries on; see [Failures and outcomes](#failures-and-outcomes).
+
+### Selection
+
+| `--source` value | Mode | Result |
+| --- | --- | --- |
+| `blog/post-1` | `subtree` (default) | One story, attached under `--destination`. |
+| `blog` | `subtree` (default) | The folder and all its descendants under `--destination`. |
+| `blog/*` | `children` (default for `folder/*`) | The folder's descendants under `--destination`, without the folder root. |
+| `blog --mode self` | `self` | Only the story or the empty folder shell. |
+| `blog,docs/guide` or `--source blog --source docs/guide` | per value | Several values planned as one run. A story inside a selected folder is planned once, under the folder. |
+
+`--source` must resolve to an existing source story or folder. Folder
+startpages are part of their folder's subtree.
+
+`--destination` must be an existing target folder `full_slug`. Omit it, or pass
+`/` or `root`, to copy into the target's root. The copied tree keeps its own
+shape below that point: `--source blog --destination imported` yields
+`imported/blog/...`.
+
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--from` | string | Source space ID. Falls back to the configured `spaceId`. |
+| `--to` | string | Target space ID. Falls back to the configured `spaceId`. |
+| `--source` | string, repeatable or comma-separated | Source story or folder `full_slug`; `folder/*` for the children only. |
+| `--destination` | string | Existing target folder `full_slug`. Omit, `/` or `root` for the target root. |
+| `--mode` | `subtree`, `children`, `self` | How a `--source` expands. Default `subtree`; `folder/*` defaults to `children`. |
+| `--with-assets` | boolean | Copy the assets the selected stories reference first (folders included), then point the copied content at the target asset ids and file names. |
+| `--publicationMode` | `preserve-layers`, `collapse-draft`, `save-only` | What to do with publish state after content is saved. Default `preserve-layers`. |
+| `--publicationLanguages` | `default`, `all`, or language codes | Which languages to publish when the mode publishes. Default `all`. Not allowed with `save-only`. |
+| `--dry-run` | boolean | Print the PLAN block, check target path conflicts, write the report if `--outputPath` is passed, and write nothing to Storyblok. |
+| `--yes` | boolean | Skip the confirmation after the PLAN block. Required in non-interactive runs. |
+| `--fresh` | boolean | Ignore the ledger: move every ledger file of the pair aside with a timestamp suffix and start empty. |
+| `--manifestRoot` | string | Directory holding the ledger. Default `.sb-mig`. |
+| `--outputPath` | string | Write the run's JSON report: the plan on `--dry-run`; on apply an outcome for every item plus every failed write. Nothing is written locally without it. |
+
+Legacy aliases still work: `--sourceSpace` (`--from`), `--targetSpace`
+(`--to`), `--what` (`--source`), `--where` (`--destination`).
+
+### The PLAN block
+
+From a real whole-site run (space ids replaced):
+
+```
+PLAN
+  815 items (82 folders) -> space 67890 (815 create, 0 adopt existing, 0 resume from ledger)
+  folders: 82 (never published)
+  ledger: 599 entries loaded from .sb-mig/copy/12345/67890/manifest.jsonl (resuming; use --fresh to ignore)
+  references: 9679 will relink, 377 leave your selection and WILL BREAK
+    WILL BREAK, by story:
+      shared/how-to-apply
+        content.body[2].link.id -> b92c6a92-ec55-4adb-baee-8ac6b586bd4e
+      ...
+  assets: 1322 will copy, 0 already mapped
+  schema drift: 200 occurrences in 70 stories
+    sb-blockquote.citation: expected richtext, got string (100)
+    sb-blockquote.content: expected richtext, got string (99)
+    sb-text.content: expected richtext, got string (1)
+  will fail: 70 stories (schema drift)
+```
+
+| Line | Meaning |
+| --- | --- |
+| `N items (F folders) -> space T (a create, b adopt existing, c resume from ledger)` | What each planned item will do. *Adopt* means a story already sits at the planned target path and is not in the ledger: it is adopted (`matched_by_target_key`) and **updated in place**. *Resume* means the ledger maps it already. |
+| `... ledger mappings no longer resolve ... and will be discarded` | A mapped target story was trashed; it is created again. A mapped story that moved keeps its mapping. |
+| `folders: F (never published)` | Folders are created as shells only. Publishing a folder in Storyblok cascades to every story inside it, so each story's own state is reproduced instead. |
+| `ledger: ...` | `loaded from <path> (resuming; use --fresh to ignore)`, `IGNORED (--fresh; starting empty)` or `none at <path> (starting empty)`. |
+| `references: a will relink, b leave your selection and WILL BREAK` | Every story reference in the selected content. *Will relink*: the target is in the selection, in the ledger, or already at its target path. *Will break*: it points at a story that is neither, so the copied content will hold a source uuid that means nothing in the target. The first stories are listed with the exact content path; the `--outputPath` report holds the full list. |
+| `assets: a will copy, b already mapped` | With `--with-assets`. Without it: `assets: not copied (pass --with-assets)`. |
+| `translated slugs: ...` | Printed only when the selection has translated slugs; says how many are carried and which languages the target lacks. |
+| `schema drift: N occurrences in M stories` | Content whose shape does not match its field's type in the target schema (a string in a `richtext` field, a string in a `bloks` field...). Storyblok rejects those writes. One line per component.field group. |
+| `will fail: N stories (schema drift)` | The stories the target will reject. They are still attempted, so the report names them. |
+
+Answer `y` (or pass `--yes`) and the writes begin.
+
+### Pre-flights and what they do not catch
+
+The plan predicts what the target will reject **before** the first write:
+
+- **Schema drift** (above): a value whose shape does not match the target
+  field type — `richtext`, `bloks`, `multilink`, `asset`, `multiasset`. An
+  empty string in a `richtext` field is drift too; Storyblok rejects it.
+- **Breaking references** (above).
+- **Component compatibility**: components missing in the target and components
+  in fields whose whitelist does not allow them are reported as warnings in the
+  JSON report (`componentCompatibility`, `summary.componentIssues`). They are
+  *not* counted as `will fail`: Storyblok saves an unknown component and a
+  whitelist violation alike and the editor shows "out of schema".
+
+Known gaps, found on real spaces and tracked in the project tracker:
+
+- A story whose **root component is not a content type** (`is_root: false`
+  in the target) fails to create with `422 please select a content type
+  component as your root component`. Storyblok checks this on create only, so a
+  source space can hold such stories. Fix: set the component's block type to
+  *Content type* or *Universal* in the target (after `copy space`, which
+  copies the source flag) or in the source.
+- An **unknown component inside a field with a whitelist** is rejected, unlike
+  an unknown component in an unrestricted field.
+- A **required field that is empty** in the source is rejected on save.
+- **Asset metadata** carrying source-only `internal_tag_ids` is rejected; the
+  file is copied, the alt/title/copyright is not.
+
+### Publication modes
+
+Shells are always created as save-only drafts. After the full rewritten content
+is saved, `--publicationMode` decides what is published:
+
+| Mode | Behavior |
+| --- | --- |
+| `preserve-layers` (default) | A clean published source story is published. A dirty published source story (published with unpublished changes) has its published version copied and published in the target, then its draft restored as save-only. Draft-only stories stay drafts. |
+| `collapse-draft` | Published source stories are published from their current draft. |
+| `save-only` | Nothing is published. |
+
+`--publicationLanguages` scopes the publish call: `all` (default), `default`
+(the default language only), or a comma-separated list of language codes. The
+same scope is applied to every published story; the source's per-language
+publish state is not read.
+
+### Failures and outcomes
+
+`copy stories` never stops at a failed write. Each failure is printed with the
+Storyblok status and message, the offending component, field and content path
+when the message names them, the source and target ids, and a note on what was
+skipped because of it. At the end:
+
+```
+✘ 83 target story/stories could not be created and 0 item(s) under them were skipped. The run carries on with everything else and exits 1.
+✘ 100 story/story shell update(s) failed; the rest of the copy still completed. Failed stories:
+✘   - _site-configuration/forms/pre-application (source id 567297527, target id 220423770834369) [update]
+✘ copy stories finished with 185 failed write(s); every other item went through. Outcomes: updated 104, published 448, publish_skipped 80, update_failed 100, create_failed 83.
+```
+
+The command exits `1` when any write failed. Each item in the `--outputPath`
+report carries an outcome:
+
+| Outcome | The target holds |
+| --- | --- |
+| `updated`, `published`, `publish_skipped` | The story's full content. `publish_skipped` means the mode chose not to publish it. |
+| `created`, `matched` | Only the shell was reached; the content write did not happen (the run was interrupted, or the update failed and is listed separately). |
+| `update_failed` | A shell with no content: Storyblok rejected the write. |
+| `create_failed` | Nothing; the story does not exist in the target. |
+| `skipped_parent_failed` | Nothing; its parent could not be created. |
+
+A rerun of the same command **without `--fresh`** resumes from the ledger:
+existing shells are reused, every story's content is written again, so fixing
+the cause and rerunning is the repair path. Failed creates are attempted again
+too.
+
+### Reports
+
+`--outputPath` writes one JSON document per run (`schemaVersion: 1`,
+`command: "copy stories"`, `dryRun`, `generatedAt`, `input`, `normalized`,
+`summary`, `translatedSlugs`, `items`, `graph`, `assetCopy`, `manifestPaths`,
+`warnings`, `errors`). `summary` counts planned folders and stories, created and
+matched stories, asset folders and assets, warnings and errors. `graph` is the
+reference scan: every story and asset reference with its classification, plus
+`opaqueFields` — fields the scanner could not read safely (a warning
+`unsupported_field` per path). On apply, `items[].outcome` is the table above
+and `errors` lists every failed write with its message.
+
+### Translated slugs
+
+Storyblok reads translated slugs as `translated_slugs` and writes them as
+`translated_slugs_attributes`; a plain copy of the story JSON loses them
+silently. `copy stories` carries them for every language the target space has
+and reports the ones it cannot carry (`translatedSlugs.unsupported`,
+`unsupportedLangs` in the report). When the target languages cannot be read,
+everything is carried and the API has the last word.
+
+## copy relink
+
+```bash
+sb-mig copy relink --from 12345 --to 67890 --source blog --destination imported --dry-run
+sb-mig copy relink --from 12345 --to 67890 --source blog --destination imported --yes
+```
+
+A story copied *before* the stories it references keeps source ids and uuids in
+its target content forever; copying the referenced stories later does not touch
+content that was already written. `copy relink` repairs that: it takes the same
+`--source`, `--destination` and `--mode` as the `copy stories` run it repairs,
+so the planned target paths line up, builds the mapping from the ledger plus the
+target's own paths, and rewrites each target story's content in place.
+
+```
+PLAN
+  130 planned items (12 folders) in space 67890 (118 mapped by ledger, 0 adopted by target path, 12 missing from target)
+    12 planned stories are not in the target and cannot be relinked; copy them first.
+  rewrite: 41 references in 9 stories; 760 already correct and left untouched
+```
+
+(Illustrative numbers; the line shapes are the command's own.)
+
+| Line | Meaning |
+| --- | --- |
+| `mapped by ledger` / `adopted by target path` / `missing from target` | How each planned story was found. Adopted stories are added to the ledger as `matched_by_target_key`. Missing stories were never copied: nothing to repair there — copy them first, then relink again. |
+| `rewrite: N references in M stories; K already correct and left untouched` | The exact number of reference values about to change. A story whose references already resolve is not written. |
+
+`copy relink` never creates stories and never copies content from the source;
+only reference values change. It updates the **draft** of each story, so
+published stories need publishing afterwards. It has no `--fresh`: the ledger
+is its input. Options: `--from`, `--to`, `--source`, `--destination`,
+`--mode`, `--dry-run`, `--yes`, `--manifestRoot`, `--outputPath`.
+
+## copy assets
+
+```bash
+sb-mig copy assets --from 12345 --to 67890 --all
+sb-mig copy assets --from 12345 --to 67890 --all --dry-run --outputPath sbmig/copy-plans/assets.json
+sb-mig copy assets --from 12345 --to 67890 --asset hero.jpg
+sb-mig copy assets --from 12345 --to 67890 --asset 217443523626671
+sb-mig copy assets --from 12345 --to 67890 --assetFolder Marketing/Heroes
+sb-mig copy assets --from 12345 --to 67890 --referenced-by-stories --source blog
+```
+
+| Selector | Copies |
+| --- | --- |
+| `--all` | Every asset and asset folder in the source (paginated; large spaces are not cut at the first API page). |
+| `--asset <id, URL or unique file name>` (repeatable) | The asset and its folder ancestors, so its folder mapping is preserved. |
+| `--assetFolder <id or path>` (repeatable) | The folder, its ancestors, its descendants and every asset inside that subtree. |
+| `--referenced-by-stories --source <story or folder>` | Only the source-space assets the selected stories reference, found by scanning their content with the source component schemas. `--mode` applies as in `copy stories`. |
+
+Use one selector family per run. Assets are matched by the ledger first, then
+by a safe target folder path or a unique file name, before anything is
+created. Apply uploads each file, finalizes the upload, writes the asset's
+metadata, and appends the asset and folder mappings to the ledger.
+
+Assets that live in another Storyblok space (a URL with a different space id)
+are reported and left as they are; they are never fetched from that space.
+`copy stories --with-assets` runs this selection for you, scoped to the
+stories it copies. Without `--with-assets`, run `copy assets` first when the
+copied stories should point at target-space assets.
+
+Options: `--from`, `--to`, `--all`, `--asset`, `--assetFolder`,
+`--referenced-by-stories`, `--source`, `--mode`, `--dry-run`, `--manifestRoot`,
+`--outputPath`.
+
+## copy manifests
+
+```bash
+sb-mig copy manifests
+sb-mig copy manifests --pair 12345:67890
+sb-mig copy manifests --pair 12345:67890 --type story --slug blog
+sb-mig copy manifests --pair 12345:67890 --outputPath sbmig/copy-plans/ledger.json
+sb-mig copy manifests --prune 12345:67890 --dry-run
+sb-mig copy manifests --prune 12345:67890 --yes
+```
+
+`copy manifests` reads the ledger and makes no Storyblok request in any mode.
+
+| Form | Behavior |
+| --- | --- |
+| no `--pair` | Lists every ledger under `--manifestRoot` with its absolute path and the ledger file's real modification time. Says nothing about whether any of them is healthy. |
+| `--pair <source>:<target>` | Prints the mappings a copy run would use — superseded and unusable lines collapsed away — then the health of the ledger behind them. `--type story\|asset\|asset_folder` (repeatable) and `--slug <text>` narrow the view. |
+| `--prune <source>:<target>` | **Deletes** that pair's whole ledger directory and everything in it, after listing every entry it would delete and asking. `--dry-run` prints the list and stops; `--yes` skips the question. Not archived: a copy run that would have resumed from it starts over. |
+
+Health: the command exits `1` on an error — a source key mapped to two
+different targets, a line it cannot read, a line belonging to another space
+pair, an unreadable file, or a mapping recorded only in a per-resource file
+(the combined `manifest.jsonl` is the authority, because that is the only file
+a copy run reads). It warns about duplicate lines and about story mappings with
+no target path, which is why stored link paths such as `cached_url` stay stale
+until `copy relink` fills them in.
+
+Safety rules: both space ids must be plain numbers (a space id becomes a
+directory name), naming half a pair is an error, and the command never falls
+back to the configured `spaceId`. `--prune` names its own pair, so it cannot be
+combined with `--pair`, `--from`, `--to`, `--type` or `--slug`; it refuses when
+any part of the path is a symbolic link, when `--outputPath` points inside the
+directory being deleted, or when `--outputPath` is a symbolic link. A ledger
+that is clean here can still be stale against the space: `copy manifests`
+cannot tell whether the target still holds the stories the mappings name.
+
+## copy space
+
+```bash
+sb-mig copy space --from 12345 --to 67890 --dry-run
+sb-mig copy space --from 12345 --to 67890 --yes
+sb-mig copy space --from 12345 --to 67890 --only groups,components --outputPath sbmig/copy-plans/space.json
+sb-mig copy space --from 12345 --to 67890 --only components --allow-missing-plugins --yes
+```
+
+`copy space` copies a space's **schema** into another, already existing space:
+languages, component groups (nesting included), components, presets, and
+datasources with their entries and dimension values. It copies no stories and no
+assets; run `copy stories` and `copy assets` into the prepared space afterwards.
+Create the target as a blank space in Storyblok first; `--from` and `--to` must
+be two different spaces.
+
+### Matching and rewriting
+
+Resources are matched **by name** and a match is overwritten with the source
+version; anything unmatched is created; anything that exists only in the target
+is left as it is. A rerun therefore updates instead of duplicating.
+
+| Resource | Matched by | Rewritten on the way |
+| --- | --- | --- |
+| languages | code | The target's language list gains the source languages; target-only languages stay. |
+| component groups | full path | Parent uuids become the target's. |
+| components | name | `component_group_uuid` and every `component_group_whitelist` entry become the target's groups. A whitelisted group with no counterpart in the target is dropped and listed. Generated `schema.<field>.id` values are dropped. Internal tags are not copied. |
+| presets | component name + preset name | `component_id` becomes the target component's id. `image` and `icon` URLs still point at the source space; reported, not rewritten. A component's default preset (`preset_id`) is restored to the copied preset when both travel in the run. |
+| datasources | name | Dimension values are copied. |
+| datasource entries | name within the datasource | Values and dimension values. |
+
+Because a match is **overwritten with the source version**, a change made only
+in the target (a component switched to *Universal*, a widened whitelist) does
+not survive the next `copy space` run over that resource. Make such changes in
+the source, or repeat them after each schema copy.
+
+### Options
+
+| Flag | Type | Effect |
+| --- | --- | --- |
+| `--from` | string | Source space ID. |
+| `--to` | string | Target space ID. Must differ from `--from`. |
+| `--only` | `languages`, `groups`, `components`, `presets`, `datasources`; comma-separated or repeatable | Restrict the run to some resources. The write order stays languages, groups, components, presets, datasources. |
+| `--allow-missing-plugins` | boolean | Write even when the target lacks field-type plugins the source components use. Those components are then rejected by Storyblok and reported. |
+| `--dry-run` | boolean | Print the PLAN block and write nothing. |
+| `--yes` | boolean | Skip the confirmation after the PLAN block. |
+| `--outputPath` | string | Write the plan (and on apply the outcome) as JSON. |
+
+### The PLAN block
+
+From a real dry-run into a blank space (space ids replaced):
+
+```
+PLAN
+  schema of space 12345 -> space 67890 (languages, groups, components, presets, datasources)
+  languages: 23 create, 0 update, 1 skip
+  groups: 18 create, 0 update, 0 skip
+  components: 332 create, 0 update, 0 skip
+  presets: 262 create, 0 update, 4 skip
+  datasources: 12 create, 0 update, 0 skip
+  entries: 645 create, 0 update, 0 skip
+  never deletes: anything that exists only in space 67890 is left as it is.
+  dropped whitelist groups: none
+  entries Storyblok will reject: colors-theme 25 of 25
+  field-type plugins missing in target: seo-metatags (3 components), backpack-breakpoints-v2 (125 components)
+    the run refuses to write until space 67890 has them assigned; pass --allow-missing-plugins to write anyway (those components will be rejected).
+  preset images: 90 presets keep image or icon URLs that point at space 12345; they are reported, not rewritten.
+  component images: 114 keep URLs that point at space 12345
+  default presets: 118 restored, 0 not restorable
+  not copied: stories, assets, workflow stages, roles, webhooks, environments, collaborators, internal tags.
+```
+
+| Line | Meaning |
+| --- | --- |
+| `<resource>: a create, b update, c skip` | Per resource. A skip names its reason (a preset whose component is not in the source, a default preset that cannot be restored...). |
+| `dropped whitelist groups` | Whitelist entries pointing at a group the target will not have, listed as `component.field: group path (uuid)`. |
+| `entries Storyblok will reject: <datasource> n of m` | Datasource entries whose name starts with `-`, `=` or `@`. Storyblok refuses to create such names (`The following characters are not allowed at the beginning of name`); existing ones in the source are grandfathered. They are planned as skipped with the reason instead of failing. |
+| `field-type plugins ...` | See below. |
+| `preset images` / `component images` | URLs left pointing at the source space. |
+| `default presets: a restored, b not restorable` | Component `preset_id` values re-pointed at the copied presets. |
+| `not copied: ...` | Always printed: stories, assets, workflow stages, roles, webhooks, environments, collaborators, internal tags. |
+
+### Field-type plugins
+
+Storyblok validates every `custom` field of a component against the plugins
+**assigned to the target space**; a component using an unassigned plugin is
+rejected with `The following field-type plugin(s) are not available in this
+space: ...`. A Storyblok "duplicate space" inherits the assignments; a blank
+space only has the organization-wide ones. Before writing, `copy space` reads
+the plugins the source components use and compares them with the target:
+
+| Plan line | Meaning |
+| --- | --- |
+| `field-type plugins: all N the source uses are assigned to space T` | Nothing to do. |
+| `field-type plugins missing in target: a (n components), b (m components)` + `the run refuses to write until ...` | Assign them in Storyblok (plugin → space), then rerun. `--allow-missing-plugins` writes anyway; the rejected components are counted per plugin at the end: `components not written: 3 — missing plugins: seo-metatags (3)`. |
+| `field-type plugins the source uses: ...` + `space T's plugins could not be read with this token` | The token cannot list the target's plugins. The plan names every plugin the target must have assigned and the run goes on. |
+
+### Failures
+
+A failed write is reported and the run carries on with the next resource, then
+exits `1`. Everything written before the failure stays written, and a rerun
+updates it in place.
+
+## Storyblok rules the family runs into
+
+These are platform behaviors, not sb-mig behaviors. They explain most
+"it exists in the source, why does the target refuse it" cases:
+
+- Storyblok validates content **on save**. Content written before a field's
+  type changed keeps its old shape until something saves it — a copy is that
+  save.
+- A story can only be **created** with a root component whose block type is
+  *Content type* or *Universal* (`is_root: true`). Existing stories with a
+  nestable root keep working.
+- A **whitelist violation** or an **unknown component** in an unrestricted
+  field is saved and flagged "out of schema" in the editor. An unknown
+  component in a field **with** a whitelist is rejected.
+- `""` or any string in a `richtext` field is rejected: `must be a prosemirror
+  document`.
+- A **datasource entry name** starting with `-`, `=` or `@` cannot be created.
+- **Field-type plugins** are assigned per space; a blank space has only the
+  organization-wide ones.
+- **Publishing a folder** publishes every story inside it. `copy stories`
+  therefore never publishes folders.
+- A deleted story stays readable by id with `deleted_at` set (soft delete);
+  the ledger treats such a mapping as gone and creates the story again.

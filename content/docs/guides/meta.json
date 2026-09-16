@@ -2,6 +2,7 @@
   "title": "Guides",
   "pages": [
     "safe-content-migration",
+    "copy-a-space",
     "published-layers",
     "language-publish-state",
     "artifacts-audit-trail"

@@ -1,0 +1,175 @@
+---
+title: Copy a Space
+description: Copy a whole Storyblok space — schema, then stories with their assets — into a blank space, with every reference resolved and a ledger to resume from.
+---
+
+# Copy a space
+
+This is the workflow for cloning a production space into a new one with
+sb-mig: the schema first, then the content, with every story and asset
+reference pointing at the copy instead of the original. It reads the source
+only; every write goes to the target. The command reference is
+[copy](/docs/reference/copy).
+
+Storyblok's own "duplicate space" does the same in one click when it works;
+this path is for when you need to see the plan first, copy in stages, rerun
+after fixing something, or prove afterwards what was copied.
+
+## 0. Prepare
+
+- Create a **blank** target space in Storyblok. `copy space` needs an existing
+  space and refuses when `--from` and `--to` are the same.
+- Use a management token that can read the source and write the target. Put
+  it in `.env` as `STORYBLOK_OAUTH_TOKEN`; never in the command line.
+- Assign the **field-type plugins** the source components use to the target
+  space (plugin → space assignment in Storyblok). `copy space --dry-run` lists
+  them for you, so run step 1 first if you do not know the list.
+- Pick a directory to run from and keep it: the ledger lives under
+  `.sb-mig/copy/<source>/<target>/` there (or under `--manifestRoot`), and
+  every later run of this pair must see it.
+
+## 1. Schema: `copy space`
+
+```bash
+sb-mig copy space --from 12345 --to 67890 --dry-run --outputPath sbmig/copy-plans/space-dryrun.json
+```
+
+Read the PLAN block. Two lines decide whether you can go on:
+
+- `field-type plugins missing in target: ...` — assign them and dry-run again.
+  The run refuses to write until they are assigned (or you pass
+  `--allow-missing-plugins` and accept that those components are rejected).
+- `entries Storyblok will reject: ...` — datasource entries whose names start
+  with `-`, `=` or `@`. They cannot be created anywhere; decide what the
+  consumer of those entries should read instead.
+
+Then apply:
+
+```bash
+sb-mig copy space --from 12345 --to 67890 --yes --outputPath sbmig/copy-plans/space.json
+```
+
+Languages, component groups, components, presets and datasources now exist in
+the target with the source's names and flags. Anything you change in the
+target afterwards (a block type, a whitelist) is overwritten by the next
+`copy space` over that resource — make such changes in the source when you can.
+
+## 2. Content: `copy stories --with-assets`, dry-run
+
+Copy from the root, one `--source` per top-level folder or story, in one run:
+
+```bash
+sb-mig copy stories --from 12345 --to 67890 \
+  --source shared,site-configuration,about,blog,events,home,landing \
+  --destination / \
+  --with-assets \
+  --publicationMode preserve-layers \
+  --dry-run \
+  --outputPath sbmig/copy-plans/site-dryrun.json
+```
+
+One run over every root is better than one run per folder: every reference
+between folders is then inside the selection and `will relink`. If you must
+copy in stages, the ledger carries the earlier stages, and `copy relink` fixes
+the references written before their targets existed.
+
+What to read in the PLAN block:
+
+| Line | What you want to see |
+| --- | --- |
+| `N items (F folders) -> space 67890 (N create, 0 adopt existing, 0 resume from ledger)` | On a first run into a blank space: everything creates. `adopt existing` means a story already sits at that path in the target and will be **updated in place**. |
+| `references: a will relink, b leave your selection and WILL BREAK` | `WILL BREAK` should be references to stories that are dead in the source already (the list shows the uuids). Anything else means a root is missing from `--source`. |
+| `assets: a will copy, b already mapped` | Every asset the selected stories reference. Assets in *other* Storyblok spaces are reported and left as URLs. |
+| `schema drift: ...` / `will fail: N stories (schema drift)` | Content Storyblok will reject as-is. Fix it in the source (a `migrate content` script), or accept those stories as missing for now; they are listed by slug in the report. |
+
+The dry-run writes nothing to Storyblok and the report is the full plan.
+
+## 3. Apply
+
+```bash
+sb-mig copy stories --from 12345 --to 67890 \
+  --source shared,site-configuration,about,blog,events,home,landing \
+  --destination / \
+  --with-assets \
+  --publicationMode preserve-layers \
+  --yes \
+  --outputPath sbmig/copy-plans/site.json 2>&1 | tee sbmig/copy-plans/site.log
+```
+
+Order of events: asset folders and assets, then story and folder shells
+(top-down, saved as drafts, each mapping appended to the ledger immediately),
+then every story's content rewritten through the ledger and saved, then the
+publication mode. Folders are never published. A whole site of 800 stories
+and 1,300 assets in 24 languages takes about two hours at Storyblok's rate
+limit.
+
+The run never stops at a failed write. At the end it prints every failure with
+its cause and an outcome count:
+
+```
+✘ copy stories finished with 185 failed write(s); every other item went through. Outcomes: updated 104, published 448, publish_skipped 80, update_failed 100, create_failed 83.
+```
+
+`update_failed` is a shell without content; `create_failed` is a story that
+does not exist in the target (its children were skipped). The reasons are
+almost always properties of the source that Storyblok tolerates for existing
+content but refuses for new writes — see [Storyblok rules the family runs
+into](/docs/reference/copy#storyblok-rules-the-family-runs-into). Fix the
+cause, then:
+
+## 4. Rerun without `--fresh`
+
+```bash
+sb-mig copy stories --from 12345 --to 67890 \
+  --source shared,site-configuration,about,blog,events,home,landing \
+  --destination / --with-assets --publicationMode preserve-layers --yes \
+  --outputPath sbmig/copy-plans/site-rerun.json
+```
+
+The same command resumes from the ledger: mapped stories are reused, every
+story's content is written again, failed creates are attempted again. Nothing
+is duplicated. Never pass `--fresh` here — it moves the ledger aside and the
+next run would create a second copy of everything next to the first.
+
+## 5. Relink
+
+References that were written while their target did not exist yet (a story
+that failed to create in step 3 and succeeded in step 4, or a folder copied in
+an earlier run) still hold source uuids. One pass over the same roots repairs
+them:
+
+```bash
+sb-mig copy relink --from 12345 --to 67890 \
+  --source shared,site-configuration,about,blog,events,home,landing \
+  --destination / --dry-run
+```
+
+The PLAN says exactly how many reference values change in how many stories,
+and how many are already correct. Apply with `--yes`. `copy relink` updates
+drafts only; published stories that it touched need publishing afterwards.
+
+## 6. Prove it
+
+```bash
+sb-mig copy manifests --pair 12345:67890
+sb-mig copy manifests --pair 12345:67890 --type story --slug blog
+```
+
+This reads the ledger back — every source → target mapping a run would use
+and the ledger's health — without touching Storyblok. For a stronger proof,
+compare the two spaces with your own read-only script: for every reference in
+the source, the target should hold the *target* uuid of the same story
+(`OK`), the source uuid only when that story is not copied yet (`pending`),
+and nothing else.
+
+## What is not reproduced yet
+
+- **Per-language publish state.** A published story is published in the
+  languages you pass (`--publicationLanguages`, default `all`), not in the
+  languages that were published in the source.
+- **Asset metadata with source-only internal tags** is rejected; the file is
+  copied, its alt/title/copyright is not.
+- **Assets that live in other Storyblok spaces** stay as URLs into those
+  spaces.
+- **Workflow stages, roles, webhooks, environments, collaborators, internal
+  tags** are not part of `copy space`.

@@ -133,17 +133,45 @@ Inspection constraints:
 | `sb-mig remove roles` | none | none | No-op warning |
 | `sb-mig remove datasources` | none | none | No-op warning |
 
+## copy
+
+Reference: [copy](/docs/reference/copy). As of `sb-mig@6.5.0-beta.7`.
+
+| Command form | Required selector | Optional flags | Writes Storyblok |
+| --- | --- | --- | --- |
+| `sb-mig copy space --from <space> --to <space>` | `--from`, `--to` (different spaces) | `--only`, `--allow-missing-plugins`, `--dry-run`, `--yes`, `--outputPath` | Yes unless `--dry-run`; never deletes |
+| `sb-mig copy stories --source <story> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--with-assets`, `--publicationMode`, `--publicationLanguages`, `--fresh`, `--manifestRoot`, `--dry-run`, `--yes`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <folder> --destination <folder>` | `--source` | same as above | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <folder>/* --destination <folder>` | `--source` | same as above (`--mode` defaults to `children`) | Yes unless `--dry-run` |
+| `sb-mig copy stories --source <a> --source <b> ...` or `--source a,b` | `--source` (repeatable) | same as above | Yes unless `--dry-run` |
+| `sb-mig copy relink --source <story-or-folder> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--manifestRoot`, `--dry-run`, `--yes`, `--outputPath` | Yes unless `--dry-run`; reference values only |
+| `sb-mig copy assets --all` | `--all` | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy assets --asset <id-url-or-file>` | `--asset` (repeatable) | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy assets --assetFolder <id-or-path>` | `--assetFolder` (repeatable) | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy assets --referenced-by-stories --source <story-or-folder>` | `--referenced-by-stories`, `--source` | `--from`, `--to`, `--mode`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
+| `sb-mig copy manifests` | none | `--manifestRoot` | No |
+| `sb-mig copy manifests --pair <source>:<target>` | `--pair` | `--type`, `--slug`, `--manifestRoot`, `--outputPath` | No |
+| `sb-mig copy manifests --prune <source>:<target>` | `--prune` | `--dry-run`, `--yes`, `--manifestRoot`, `--outputPath` | No; deletes the ledger directory on disk |
+
+Copy constraints:
+
+| Combination | Status |
+| --- | --- |
+| `copy space --from A --to A` | Rejected. Two different spaces are required. |
+| `copy space` into a space missing field-type plugins the source uses | Refuses to write; `--allow-missing-plugins` writes and reports the rejected components. |
+| `copy stories --publicationMode save-only --publicationLanguages ...` | Rejected. Save-only publishes nothing. |
+| `copy stories --destination <missing folder>` | Rejected. The destination must exist, or be omitted, `/` or `root`. |
+| `copy stories` or `copy relink` or `copy space` without a terminal and without `--yes` | Refuses to write after printing the PLAN block. |
+| `copy relink --fresh` | Not a flag. The ledger is relink's input. |
+| `copy assets` with two selector families (`--all --asset ...`) | Rejected. One selector family per run. |
+| `copy manifests --pair` with a non-numeric space id, or half a pair | Rejected. Never falls back to the configured `spaceId`. |
+| `copy manifests --prune` with `--pair`, `--from`, `--to`, `--type` or `--slug` | Rejected. `--prune` names its own pair. |
+| `copy manifests --prune` on a path with a symbolic link, or `--outputPath` inside the pruned directory | Refused. |
+
 ## utilities
 
 | Command form | Required selector | Optional flags | Writes Storyblok |
 | --- | --- | --- | --- |
-| `sb-mig copy stories --source <story> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy stories --source <folder> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy stories --source <folder>/* --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy assets --all` | `--all` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy assets --asset <id-or-file>` | `--asset` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy assets --assetFolder <id-or-path>` | `--assetFolder` | `--from`, `--to`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
-| `sb-mig copy assets --referenced-by-stories --source <story-or-folder>` | `--referenced-by-stories`, `--source` | `--from`, `--to`, `--mode`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig discover components --all` | `--all` | `--write`, `--file` | No |
 | `sb-mig discover migrations --all` | `--all` | none | No |
 | `sb-mig migrations recognize --from <version>` | `--from` | `--to` | No |
