@@ -49,8 +49,12 @@ Then apply:
 sb-mig copy space --from 12345 --to 67890 --yes --outputPath sbmig/copy-plans/space.json
 ```
 
-Languages, component groups, components, presets and datasources now exist in
-the target with the source's names and flags. Anything you change in the
+Languages, space settings (individual translation publishing, alternative
+versions, the Visual Editor location and preview URLs), component groups,
+components, presets and datasources now exist in the target with the source's
+names and flags. Preview URLs are copied as they are and never printed; they
+still point at the source's frontend, so change the target's default location
+when the copy should preview its own content. Anything you change in the
 target afterwards (a block type, a whitelist) is overwritten by the next
 `copy space` over that resource — make such changes in the source when you can.
 
@@ -171,5 +175,5 @@ and nothing else.
   copied, its alt/title/copyright is not.
 - **Assets that live in other Storyblok spaces** stay as URLs into those
   spaces.
-- **Workflow stages, roles, webhooks, environments, collaborators, internal
-  tags** are not part of `copy space`.
+- **Workflow stages, roles, webhooks, collaborators, internal tags** are not
+  part of `copy space`.

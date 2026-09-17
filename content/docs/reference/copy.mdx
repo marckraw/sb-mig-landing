@@ -11,12 +11,12 @@ sb-mig copy <subcommand> --from <sourceSpaceId> --to <targetSpaceId> [options]
 
 `copy` moves things from one Storyblok space into another and remembers what it
 did. It has five subcommands; this page is their reference as of
-`sb-mig@6.5.0-beta.7`. Run `sb-mig copy --help` for the same facts in the
+`sb-mig@6.5.0-beta.8`. Run `sb-mig copy --help` for the same facts in the
 terminal.
 
 | Subcommand | What it does | Writes Storyblok |
 | --- | --- | --- |
-| [`copy space`](#copy-space) | Copy a space's schema — languages, component groups, components, presets, datasources and entries — into another existing space. No stories, no assets. | Yes unless `--dry-run` |
+| [`copy space`](#copy-space) | Copy a space's schema — languages, space settings, component groups, components, presets, datasources and entries — into another existing space. No stories, no assets. | Yes unless `--dry-run` |
 | [`copy stories`](#copy-stories) | Copy one story, a folder subtree, a folder's children or a folder shell, with every reference rewritten to the target. | Yes unless `--dry-run` |
 | [`copy assets`](#copy-assets) | Copy assets and asset folders, all or by selection. | Yes unless `--dry-run` |
 | [`copy relink`](#copy-relink) | Repair references in stories that were already copied, without copying content again. | Yes unless `--dry-run` |
@@ -382,11 +382,13 @@ cannot tell whether the target still holds the stories the mappings name.
 sb-mig copy space --from 12345 --to 67890 --dry-run
 sb-mig copy space --from 12345 --to 67890 --yes
 sb-mig copy space --from 12345 --to 67890 --only groups,components --outputPath sbmig/copy-plans/space.json
+sb-mig copy space --from 12345 --to 67890 --only settings --dry-run
 sb-mig copy space --from 12345 --to 67890 --only components --allow-missing-plugins --yes
 ```
 
 `copy space` copies a space's **schema** into another, already existing space:
-languages, component groups (nesting included), components, presets, and
+languages, space settings (internationalization switches and Visual Editor
+preview URLs), component groups (nesting included), components, presets, and
 datasources with their entries and dimension values. It copies no stories and no
 assets; run `copy stories` and `copy assets` into the prepared space afterwards.
 Create the target as a blank space in Storyblok first; `--from` and `--to` must
@@ -401,6 +403,7 @@ is left as it is. A rerun therefore updates instead of duplicating.
 | Resource | Matched by | Rewritten on the way |
 | --- | --- | --- |
 | languages | code | The target's language list gains the source languages; target-only languages stay. |
+| settings | field | Seven fields of the space, see [Space settings](#space-settings). Only the fields that differ are written. |
 | component groups | full path | Parent uuids become the target's. |
 | components | name | `component_group_uuid` and every `component_group_whitelist` entry become the target's groups. A whitelisted group with no counterpart in the target is dropped and listed. Generated `schema.<field>.id` values are dropped. Internal tags are not copied. |
 | presets | component name + preset name | `component_id` becomes the target component's id. `image` and `icon` URLs still point at the source space; reported, not rewritten. A component's default preset (`preset_id`) is restored to the copied preset when both travel in the run. |
@@ -418,7 +421,7 @@ the source, or repeat them after each schema copy.
 | --- | --- | --- |
 | `--from` | string | Source space ID. |
 | `--to` | string | Target space ID. Must differ from `--from`. |
-| `--only` | `languages`, `groups`, `components`, `presets`, `datasources`; comma-separated or repeatable | Restrict the run to some resources. The write order stays languages, groups, components, presets, datasources. |
+| `--only` | `languages`, `settings`, `groups`, `components`, `presets`, `datasources`; comma-separated or repeatable | Restrict the run to some resources. The write order stays languages, settings, groups, components, presets, datasources. |
 | `--allow-missing-plugins` | boolean | Write even when the target lacks field-type plugins the source components use. Those components are then rejected by Storyblok and reported. |
 | `--dry-run` | boolean | Print the PLAN block and write nothing. |
 | `--yes` | boolean | Skip the confirmation after the PLAN block. |
@@ -432,6 +435,11 @@ From a real dry-run into a blank space (space ids replaced):
 PLAN
   schema of space 12345 -> space 67890 (languages, groups, components, presets, datasources)
   languages: 23 create, 0 update, 1 skip
+  settings: 4 change, 3 same, 0 kept
+    use_translated_stories: false -> true
+    show_stories_alternative_versions: false -> true
+    domain: none -> https://preview.example.com/…
+    environments: 0 -> 3 (added: LOCALHOST, PROD EDITOR, dev-preview)
   groups: 18 create, 0 update, 0 skip
   components: 332 create, 0 update, 0 skip
   presets: 262 create, 0 update, 4 skip
@@ -445,18 +453,55 @@ PLAN
   preset images: 90 presets keep image or icon URLs that point at space 12345; they are reported, not rewritten.
   component images: 114 keep URLs that point at space 12345
   default presets: 118 restored, 0 not restorable
-  not copied: stories, assets, workflow stages, roles, webhooks, environments, collaborators, internal tags.
+  not copied: stories, assets, workflow stages, roles, webhooks, collaborators, internal tags.
 ```
 
 | Line | Meaning |
 | --- | --- |
+| `settings: a change, b same, c kept` | Per setting, then one line per change and per kept value. See [Space settings](#space-settings). |
 | `<resource>: a create, b update, c skip` | Per resource. A skip names its reason (a preset whose component is not in the source, a default preset that cannot be restored...). |
 | `dropped whitelist groups` | Whitelist entries pointing at a group the target will not have, listed as `component.field: group path (uuid)`. |
 | `entries Storyblok will reject: <datasource> n of m` | Datasource entries whose name starts with `-`, `=` or `@`. Storyblok refuses to create such names (`The following characters are not allowed at the beginning of name`); existing ones in the source are grandfathered. They are planned as skipped with the reason instead of failing. |
 | `field-type plugins ...` | See below. |
 | `preset images` / `component images` | URLs left pointing at the source space. |
 | `default presets: a restored, b not restorable` | Component `preset_id` values re-pointed at the copied presets. |
-| `not copied: ...` | Always printed: stories, assets, workflow stages, roles, webhooks, environments, collaborators, internal tags. |
+| `not copied: ...` | Always printed: stories, assets, workflow stages, roles, webhooks, collaborators, internal tags — plus `environments` when `settings` is not in scope. |
+
+### Space settings
+
+The `settings` resource copies seven fields of the space object, written with
+one `PUT` right after the languages and only when something differs:
+
+| Setting in Storyblok | Field | How it is copied |
+| --- | --- | --- |
+| Internationalization → Enable Individual Translation Publishing | `use_translated_stories` | Turned on when the source has it. **Never turned off** in the target. |
+| Internationalization → Enable Alternative Versions | `show_stories_alternative_versions` | Turned on when the source has it. **Never turned off** in the target. |
+| Internationalization → Hide the flags | `hide_flag_icons` | Mirrors the source. |
+| Internationalization → Flags represent language / country | `flag_icons_display_mode` | Mirrors the source. |
+| Visual Editor → Location (default environment) | `domain` | Overwritten when the source has one. |
+| Visual Editor → Preview URLs | `environments` (`{ name, location }`) | Merged by name, the way languages are: a source entry replaces the target's first entry of the same name, new names are appended, preview URLs that exist only in the target are kept. |
+| Visual Editor → Encode URL | `encode_preview_urls` | Mirrors the source. |
+
+Every field ends as `change` (written), `same`, or `kept` (the target keeps
+what it has: a capability flag that is on, a domain the source does not have).
+A value Storyblok returns as `null` counts as not set and is never written.
+Nothing else on the space object — tokens, webhooks, plan, owner — is read into
+a write.
+
+Preview URLs usually carry the frontend's preview secret in their query
+string. They are **written exactly as they are** and **never printed**: the
+PLAN, the console and the `--outputPath` report show the domain by its origin
+only (`https://preview.example.com/…`), preview URLs by name and count, and a
+rejected settings write by its HTTP status and field names
+(`settings write rejected: 422 (domain)`), never the response text.
+
+Individual translation publishing matters beyond the editor: publishing a
+single language through the Management API (`publish?lang=…`) only works when
+it is enabled in the space.
+
+The copied preview URLs point at the *source's* frontend, which reads the
+source space. Change the target's default location afterwards when the copy
+should preview its own content.
 
 ### Field-type plugins
 
