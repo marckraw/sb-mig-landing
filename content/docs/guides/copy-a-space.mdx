@@ -60,11 +60,12 @@ target afterwards (a block type, a whitelist) is overwritten by the next
 
 ## 2. Content: `copy stories --with-assets`, dry-run
 
-Copy from the root, one `--source` per top-level folder or story, in one run:
+Copy the whole space in one run — `--source /` is every root story and folder
+of the source, read fresh on every run:
 
 ```bash
 sb-mig copy stories --from 12345 --to 67890 \
-  --source shared,site-configuration,about,blog,events,home,landing \
+  --source / \
   --destination / \
   --with-assets \
   --publicationMode preserve-layers \
@@ -72,18 +73,20 @@ sb-mig copy stories --from 12345 --to 67890 \
   --outputPath sbmig/copy-plans/site-dryrun.json
 ```
 
-One run over every root is better than one run per folder: every reference
-between folders is then inside the selection and `will relink`. If you must
-copy in stages, the ledger carries the earlier stages, and `copy relink` fixes
-the references written before their targets existed.
+Leave roots out with `--exclude test-pages,drafts`. One run over every root is
+better than one run per folder: every reference between folders is then
+inside the selection and `will relink`. If you must copy in stages, the ledger
+carries the earlier stages, and `copy relink` fixes the references written
+before their targets existed.
 
 What to read in the PLAN block:
 
 | Line | What you want to see |
 | --- | --- |
+| `selections: / -> 23 roots (…)` and the root names | What "everything" meant. A root you did not expect is a root somebody added to the source; a missing one is a reading error, and the run stops on it rather than skipping it. |
 | `N items (F folders) -> space 67890 (N create, 0 adopt existing, 0 resume from ledger)` | On a first run into a blank space: everything creates. `adopt existing` means a story already sits at that path in the target and will be **updated in place**. |
 | `references: a will relink, b leave your selection and WILL BREAK` | `WILL BREAK` should be references to stories that are dead in the source already (the list shows the uuids). Anything else means a root is missing from `--source`. |
-| `assets: a will copy, b already mapped` | Every asset the selected stories reference. Assets in *other* Storyblok spaces are reported and left as URLs. |
+| `assets: a will copy, b already mapped` and `Asset refs by shape: … in asset fields, … as URLs in text` | Every asset the selected stories reference — in asset fields and as URLs inside links, SEO fields and HTML. Assets in *other* Storyblok spaces are reported and left as URLs. |
 | `schema drift: ...` / `will fail: N stories (schema drift)` | Content Storyblok will reject as-is. Fix it in the source (a `migrate content` script), or accept those stories as missing for now; they are listed by slug in the report. |
 
 The dry-run writes nothing to Storyblok and the report is the full plan.
@@ -92,7 +95,7 @@ The dry-run writes nothing to Storyblok and the report is the full plan.
 
 ```bash
 sb-mig copy stories --from 12345 --to 67890 \
-  --source shared,site-configuration,about,blog,events,home,landing \
+  --source / \
   --destination / \
   --with-assets \
   --publicationMode preserve-layers \
@@ -125,7 +128,7 @@ cause, then:
 
 ```bash
 sb-mig copy stories --from 12345 --to 67890 \
-  --source shared,site-configuration,about,blog,events,home,landing \
+  --source / \
   --destination / --with-assets --publicationMode preserve-layers --yes \
   --outputPath sbmig/copy-plans/site-rerun.json
 ```
@@ -144,7 +147,7 @@ them:
 
 ```bash
 sb-mig copy relink --from 12345 --to 67890 \
-  --source shared,site-configuration,about,blog,events,home,landing \
+  --source / \
   --destination / --dry-run
 ```
 
@@ -165,6 +168,33 @@ compare the two spaces with your own read-only script: for every reference in
 the source, the target should hold the *target* uuid of the same story
 (`OK`), the source uuid only when that story is not copied yet (`pending`),
 and nothing else.
+
+## After a Storyblok duplicate
+
+Storyblok's own "duplicate space" copies stories, schema and settings, but not
+the asset library: every story of the duplicate keeps the **source's** asset
+ids and URLs. sb-mig finishes the job without copying any story:
+
+```bash
+# 1. the whole library into the duplicate; writes the asset ledger
+sb-mig copy assets --from 12345 --to 67890 --all --manifestRoot ./manifests --outputPath reports/assets.json
+
+# 2. re-point every story of the duplicate at the copied files
+sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests --dry-run --outputPath reports/relink-dryrun.json
+sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests --yes --outputPath reports/relink.json
+```
+
+The relink PLAN shows every story as `adopted by target path` — after a
+duplicate all uuids and ids are new, so the path is the only match — and
+`rewrite: N references in M stories`: the asset objects **and** the asset URLs
+inside links, SEO fields and HTML. Story references are `already correct`
+because Storyblok remapped them. Run the dry-run again afterwards: `0
+references`. Three things to know: the repair lands in each story's **draft**
+(publish the stories that were cleanly published; a story that already had
+unpublished changes needs a look before publishing); a story Storyblok rejects
+on save (schema drift, a blank required field) keeps its old URLs and is listed
+in the report; assets in other spaces or already deleted in the source stay as
+they are.
 
 ## What is not reproduced yet
 

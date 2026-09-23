@@ -135,7 +135,7 @@ Inspection constraints:
 
 ## copy
 
-Reference: [copy](/docs/reference/copy). As of `sb-mig@6.5.0-beta.8`. `copy space --only` accepts `languages`, `settings`, `groups`, `components`, `presets`, `datasources`.
+Reference: [copy](/docs/reference/copy). As of `sb-mig@6.5.0-beta.9`. `copy space --only` accepts `languages`, `settings`, `groups`, `components`, `presets`, `datasources`.
 
 | Command form | Required selector | Optional flags | Writes Storyblok |
 | --- | --- | --- | --- |
@@ -144,7 +144,9 @@ Reference: [copy](/docs/reference/copy). As of `sb-mig@6.5.0-beta.8`. `copy spac
 | `sb-mig copy stories --source <folder> --destination <folder>` | `--source` | same as above | Yes unless `--dry-run` |
 | `sb-mig copy stories --source <folder>/* --destination <folder>` | `--source` | same as above (`--mode` defaults to `children`) | Yes unless `--dry-run` |
 | `sb-mig copy stories --source <a> --source <b> ...` or `--source a,b` | `--source` (repeatable) | same as above | Yes unless `--dry-run` |
+| `sb-mig copy stories --source / --destination /` | `--source /` | same as above plus `--exclude` | Yes unless `--dry-run`; every root story and folder of the source |
 | `sb-mig copy relink --source <story-or-folder> --destination <folder>` | `--source` | `--from`, `--to`, `--destination`, `--mode`, `--manifestRoot`, `--dry-run`, `--yes`, `--outputPath` | Yes unless `--dry-run`; reference values only |
+| `sb-mig copy relink --source / --destination /` | `--source /` | same as above plus `--exclude` | Yes unless `--dry-run`; reference values only, whole space |
 | `sb-mig copy assets --all` | `--all` | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig copy assets --asset <id-url-or-file>` | `--asset` (repeatable) | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
 | `sb-mig copy assets --assetFolder <id-or-path>` | `--assetFolder` (repeatable) | `--from`, `--to`, `--manifestRoot`, `--dry-run`, `--outputPath` | Yes unless `--dry-run` |
@@ -163,6 +165,8 @@ Copy constraints:
 | `copy stories --destination <missing folder>` | Rejected. The destination must exist, or be omitted, `/` or `root`. |
 | `copy stories` or `copy relink` or `copy space` without a terminal and without `--yes` | Refuses to write after printing the PLAN block. |
 | `copy relink --fresh` | Not a flag. The ledger is relink's input. |
+| `copy stories --source / --mode children` | Rejected. `/` already means everything under the space root. |
+| `--exclude` without `--source /`, a name that is not a root, a root both named and excluded, or every root excluded | Rejected before any read, naming the roots. |
 | `copy assets` with two selector families (`--all --asset ...`) | Rejected. One selector family per run. |
 | `copy manifests --pair` with a non-numeric space id, or half a pair | Rejected. Never falls back to the configured `spaceId`. |
 | `copy manifests --prune` with `--pair`, `--from`, `--to`, `--type` or `--slug` | Rejected. `--prune` names its own pair. |

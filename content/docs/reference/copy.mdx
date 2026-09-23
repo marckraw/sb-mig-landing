@@ -11,7 +11,7 @@ sb-mig copy <subcommand> --from <sourceSpaceId> --to <targetSpaceId> [options]
 
 `copy` moves things from one Storyblok space into another and remembers what it
 did. It has five subcommands; this page is their reference as of
-`sb-mig@6.5.0-beta.8`. Run `sb-mig copy --help` for the same facts in the
+`sb-mig@6.5.0-beta.9`. Run `sb-mig copy --help` for the same facts in the
 terminal.
 
 | Subcommand | What it does | Writes Storyblok |
@@ -79,6 +79,8 @@ sb-mig copy stories --from 12345 --to 67890 --source blog/* --destination import
 sb-mig copy stories --from 12345 --to 67890 --source blog --mode self --destination /
 sb-mig copy stories --from 12345 --to 67890 --source blog --source docs --destination /
 sb-mig copy stories --from 12345 --to 67890 --source blog/*,docs --destination /
+sb-mig copy stories --from 12345 --to 67890 --source / --destination / --with-assets --dry-run --outputPath sbmig/copy-plans/site.json
+sb-mig copy stories --from 12345 --to 67890 --source / --exclude test-pages,drafts --destination / --with-assets --yes
 sb-mig copy stories --from 12345 --to 67890 --source blog --destination / --with-assets --dry-run --outputPath sbmig/copy-plans/blog.json
 sb-mig copy stories --from 12345 --to 67890 --source blog --destination / --with-assets --yes
 ```
@@ -112,9 +114,20 @@ carries on; see [Failures and outcomes](#failures-and-outcomes).
 | `blog/*` | `children` (default for `folder/*`) | The folder's descendants under `--destination`, without the folder root. |
 | `blog --mode self` | `self` | Only the story or the empty folder shell. |
 | `blog,docs/guide` or `--source blog --source docs/guide` | per value | Several values planned as one run. A story inside a selected folder is planned once, under the folder. |
+| `/` (or `/*`) | `subtree` per root | **The whole space**: every root story and folder of the source, expanded to one selection per root in `full_slug` order. `--exclude a,b` drops roots. `--mode children` is refused with `/`. |
 
-`--source` must resolve to an existing source story or folder. Folder
-startpages are part of their folder's subtree.
+`--source` must resolve to an existing source story or folder, or be `/`.
+Folder startpages are part of their folder's subtree.
+
+`/` reads the source's roots on every run, so a story or folder added to the
+root later is included next time without editing the command. The run says
+what it meant — `Sources: / -> 23 roots of space 12345, mode 'subtree',
+destination '/'.` — and the PLAN lists the roots and the excluded ones. The
+report keeps `normalized.source: "/"` next to `normalized.roots` and
+`normalized.excluded`, and its reproduce-commands carry `--exclude`. Excluding
+every root, naming a root both in `--source` and `--exclude`, or excluding a
+name that is not a root are errors before anything is read; a root the run
+cannot read stops the run instead of being skipped silently.
 
 `--destination` must be an existing target folder `full_slug`. Omit it, or pass
 `/` or `root`, to copy into the target's root. The copied tree keeps its own
@@ -127,10 +140,11 @@ shape below that point: `--source blog --destination imported` yields
 | --- | --- | --- |
 | `--from` | string | Source space ID. Falls back to the configured `spaceId`. |
 | `--to` | string | Target space ID. Falls back to the configured `spaceId`. |
-| `--source` | string, repeatable or comma-separated | Source story or folder `full_slug`; `folder/*` for the children only. |
+| `--source` | string, repeatable or comma-separated | Source story or folder `full_slug`; `folder/*` for the children only; `/` for every root of the space. |
+| `--exclude` | string, repeatable or comma-separated | Root `full_slug`s to drop from `--source /`, with or without a trailing slash. Only valid together with `/`. |
 | `--destination` | string | Existing target folder `full_slug`. Omit, `/` or `root` for the target root. |
 | `--mode` | `subtree`, `children`, `self` | How a `--source` expands. Default `subtree`; `folder/*` defaults to `children`. |
-| `--with-assets` | boolean | Copy the assets the selected stories reference first (folders included), then point the copied content at the target asset ids and file names. |
+| `--with-assets` | boolean | Copy the assets the selected stories reference first (folders included), then point the copied content at the target asset ids and file names. A reference is an asset field **or an asset URL written into any string** — see [Asset references](#asset-references). |
 | `--publicationMode` | `preserve-layers`, `collapse-draft`, `save-only` | What to do with publish state after content is saved. Default `preserve-layers`. |
 | `--publicationLanguages` | `default`, `all`, or language codes | Which languages to publish when the mode publishes. Default `all`. Not allowed with `save-only`. |
 | `--dry-run` | boolean | Print the PLAN block, check target path conflicts, write the report if `--outputPath` is passed, and write nothing to Storyblok. |
@@ -177,6 +191,40 @@ PLAN
 | `will fail: N stories (schema drift)` | The stories the target will reject. They are still attempted, so the report names them. |
 
 Answer `y` (or pass `--yes`) and the writes begin.
+
+### Asset references
+
+An asset is referenced in two shapes, and both count:
+
+| Shape | Where | Example |
+| --- | --- | --- |
+| **object** | `asset` / `multiasset` fields | `{ "id": 217443523626671, "filename": "https://a.storyblok.com/f/12345/1080x695/6f6a1b47af/hero.png" }` |
+| **string** | any text, link, richtext or plugin field, at any depth, in any language copy | an asset link (`linktype: "asset"` with `href`/`url`/`cached_url`), the SEO plugin's `og_image`, `<img src="…">` inside HTML, a richtext `image` node's `src` |
+
+The identity of an asset inside a string is its **path**, `/f/<space>/<size>/<hash>/<name>`
+— never the whole URL. The asset library reports most files as
+`https://s3.amazonaws.com/a.storyblok.com/f/…` while content writes
+`https://a.storyblok.com/f/…`; comparing URLs as text would match nothing.
+When a string reference is rewritten only that path changes: the host form as
+written, a `/m/800x0` resize suffix, a `?utm…` query and every character
+around the URL stay byte-identical. Only URLs of the **source** space whose
+file the ledger proves was copied are rewritten; a URL of another space, or of
+a file that was never copied, is left exactly as it is — nothing is ever built
+by swapping a space id. An asset object whose stored id no longer matches the
+library's id for the same file (a replaced upload) is found by its path and
+takes both the target's id and file name.
+
+The dry-run says how the references are held:
+
+```
+[dry-run] Asset refs: 3522 mapped, 54 planned, 97 unresolved.
+[dry-run] Asset refs by shape: 3586 in asset fields, 87 as URLs in text (4 unique asset(s)).
+```
+
+and the report's `assetReferenceSummary.byShape` carries the same counts. On a
+real site roughly 7% of asset references were strings — PDF links, share
+images, inline images — and before 6.5.0-beta.9 none of them was copied or
+rewritten.
 
 ### Pre-flights and what they do not catch
 
@@ -278,6 +326,7 @@ everything is carried and the API has the last word.
 ```bash
 sb-mig copy relink --from 12345 --to 67890 --source blog --destination imported --dry-run
 sb-mig copy relink --from 12345 --to 67890 --source blog --destination imported --yes
+sb-mig copy relink --from 12345 --to 67890 --source / --destination / --dry-run
 ```
 
 A story copied *before* the stories it references keeps source ids and uuids in
@@ -304,8 +353,17 @@ PLAN
 `copy relink` never creates stories and never copies content from the source;
 only reference values change. It updates the **draft** of each story, so
 published stories need publishing afterwards. It has no `--fresh`: the ledger
-is its input. Options: `--from`, `--to`, `--source`, `--destination`,
-`--mode`, `--dry-run`, `--yes`, `--manifestRoot`, `--outputPath`.
+is its input. Options: `--from`, `--to`, `--source` (including `/`),
+`--exclude`, `--destination`, `--mode`, `--dry-run`, `--yes`, `--manifestRoot`,
+`--outputPath`.
+
+`copy relink` repairs asset references in both shapes (see [Asset
+references](#asset-references)): a target story that still holds a
+source-space asset URL inside a link, an SEO field or HTML is re-pointed once
+the ledger holds that file. That makes it the second half of a native
+Storyblok "duplicate space", which copies stories but not assets: run
+`copy assets --all`, then `copy relink --source / --destination /` — see
+[After a Storyblok duplicate](/docs/guides/copy-a-space#after-a-storyblok-duplicate).
 
 ## copy assets
 
@@ -323,7 +381,7 @@ sb-mig copy assets --from 12345 --to 67890 --referenced-by-stories --source blog
 | `--all` | Every asset and asset folder in the source (paginated; large spaces are not cut at the first API page). |
 | `--asset <id, URL or unique file name>` (repeatable) | The asset and its folder ancestors, so its folder mapping is preserved. |
 | `--assetFolder <id or path>` (repeatable) | The folder, its ancestors, its descendants and every asset inside that subtree. |
-| `--referenced-by-stories --source <story or folder>` | Only the source-space assets the selected stories reference, found by scanning their content with the source component schemas. `--mode` applies as in `copy stories`. |
+| `--referenced-by-stories --source <story or folder>` | Only the source-space assets the selected stories reference — as asset objects or as URLs inside strings (see [Asset references](#asset-references)). `--mode` applies as in `copy stories`. |
 
 Use one selector family per run. Assets are matched by the ledger first, then
 by a safe target folder path or a unique file name, before anything is
