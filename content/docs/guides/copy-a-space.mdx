@@ -26,7 +26,11 @@ after fixing something, or prove afterwards what was copied.
   them for you, so run step 1 first if you do not know the list.
 - Pick a directory to run from and keep it: the ledger lives under
   `.sb-mig/copy/<source>/<target>/` there (or under `--manifestRoot`), and
-  every later run of this pair must see it.
+  every later run of this pair must see it. sb-mig runs inside a project, so
+  the directory holds `storyblok.config.js` (or `.mjs`), `.env` and a
+  `package.json` — a minimal `{ "name": "space-copy", "private": true }` is
+  enough; without one the command stops with `Cannot find module
+  '…/package.json'`.
 
 ## 1. Schema: `copy space`
 
@@ -152,8 +156,13 @@ sb-mig copy relink --from 12345 --to 67890 \
 ```
 
 The PLAN says exactly how many reference values change in how many stories,
-and how many are already correct. Apply with `--yes`. `copy relink` updates
-drafts only; published stories that it touched need publishing afterwards.
+and how many are already correct, and how each story's publication state is
+kept (the `publication:` line). Apply with `--yes`. Published stories are
+republished with the repair, drafts stay drafts, and a story with unpublished
+changes has its live version repaired from its history and its draft put
+back. Only the stories the PLAN **lists** — unpublished changes and no
+published version — are saved as drafts and need a person to publish them. See
+[copy relink → Publication state](/docs/reference/copy#publication-state).
 
 ## 6. Prove it
 
@@ -173,36 +182,85 @@ and nothing else.
 
 Storyblok's own "duplicate space" copies stories, schema and settings, but not
 the asset library: every story of the duplicate keeps the **source's** asset
-ids and URLs. sb-mig finishes the job without copying any story:
+ids and URLs. sb-mig finishes the job without copying any story.
 
-```bash
-# 1. the whole library into the duplicate; writes the asset ledger
-sb-mig copy assets --from 12345 --to 67890 --all --manifestRoot ./manifests --outputPath reports/assets.json
+Run it from a directory prepared as in [Prepare](#0-prepare):
+`storyblok.config.js` (or `.mjs`), `.env` with the token, and a `package.json`
+(`{ "name": "space-copy", "private": true }` is enough). The asset copy of a
+large library takes a while; write every run to a log with `2>&1 | tee`, which
+also switches the progress line to whole lines (see [Progress and
+`--verbose`](/docs/reference/copy#progress-and---verbose)). A run that stops —
+a closed terminal, a restart — is resumed by running the same command again:
+the ledger holds what was copied, and nothing is uploaded twice.
 
-# 2. re-point every story of the duplicate at the copied files
-sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests --dry-run --outputPath reports/relink-dryrun.json
-sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests --yes --outputPath reports/relink.json
-```
+1. **Assets.** Copy the whole library into the duplicate; this writes the
+   asset ledger:
 
-The relink PLAN shows every story as `adopted by target path` — after a
-duplicate all uuids and ids are new, so the path is the only match — and
-`rewrite: N references in M stories`: the asset objects **and** the asset URLs
-inside links, SEO fields and HTML. Story references are `already correct`
-because Storyblok remapped them. Run the dry-run again afterwards: `0
-references`. Three things to know: the repair lands in each story's **draft**
-(publish the stories that were cleanly published; a story that already had
-unpublished changes needs a look before publishing); a story Storyblok rejects
-on save (schema drift, a blank required field) keeps its old URLs and is listed
-in the report; assets in other spaces or already deleted in the source stay as
-they are.
+   ```bash
+   sb-mig copy assets --from 12345 --to 67890 --all --manifestRoot ./manifests \
+     --outputPath reports/assets.json 2>&1 | tee reports/assets.log
+   ```
+
+   `--dry-run` first shows what will upload, and on a rerun what is already
+   copied.
+
+2. **Tags.** Read the `internal tags:` line of the PLAN. Storyblok does not let
+   a personal access token create tags, so the tags the duplicate lacks are
+   named there:
+
+   ```
+   internal tags: 5 matched, 2 missing in space 67890 — create them in Storyblok (Assets → Tags) and rerun: campaign-2025, legal
+   ```
+
+   Create the named tags in the duplicate under **Assets → Tags**, then run the
+   same `copy assets --all` command again. Nothing is uploaded twice; the
+   metadata of every copied asset is written again, now with its tags. Skip
+   this step when the line says `0 missing`.
+
+3. **Relink, dry-run.** Re-point every story of the duplicate at the copied
+   files and read the plan:
+
+   ```bash
+   sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests \
+     --dry-run --outputPath reports/relink-dryrun.json
+   ```
+
+   The PLAN shows every story as `adopted by target path` — after a duplicate
+   all uuids and ids are new, so the path is the only match — and `rewrite: N
+   references in M stories`: the asset objects **and** the asset URLs inside
+   links, SEO fields and HTML. Story references are `already correct` because
+   Storyblok remapped them. The `publication:` line says how each story's
+   publish state is kept.
+
+4. **Relink, apply.**
+
+   ```bash
+   sb-mig copy relink --from 12345 --to 67890 --source / --destination / --manifestRoot ./manifests \
+     --yes --outputPath reports/relink.json 2>&1 | tee reports/relink.log
+   ```
+
+   Run the dry-run again afterwards: `0 references`.
+
+5. **Publish what is listed.** Publishing is part of step 4: published stories
+   are republished with the repair, drafts stay drafts, and a story with
+   unpublished changes has its live version repaired from its history and its
+   draft put back. The stories the PLAN and the report **list** (unpublished
+   changes and no published version) hold the repair in their draft only;
+   review and publish those by hand. Stories with the outcome
+   `changed_since_read` were edited during the run; run step 4 again for them.
+
+A story Storyblok rejects on save (schema drift, a blank required field) keeps
+its old URLs and is listed in the report; assets in other spaces or already
+deleted in the source stay as they are.
 
 ## What is not reproduced yet
 
-- **Per-language publish state.** A published story is published in the
-  languages you pass (`--publicationLanguages`, default `all`), not in the
-  languages that were published in the source.
-- **Asset metadata with source-only internal tags** is rejected; the file is
-  copied, its alt/title/copyright is not.
+- **Internal tags the target lacks.** They are named in the `copy assets`
+  PLAN and must be created in Storyblok by hand; a rerun then attaches them.
+- **Per-language publish state into a space that publishes all languages
+  together.** Each translation is published as it was only when the target
+  has *Enable Individual Translation Publishing* on; copy it with `copy space
+  --only settings` first.
 - **Assets that live in other Storyblok spaces** stay as URLs into those
   spaces.
 - **Workflow stages, roles, webhooks, collaborators, internal tags** are not

@@ -11,7 +11,7 @@ sb-mig copy <subcommand> --from <sourceSpaceId> --to <targetSpaceId> [options]
 
 `copy` moves things from one Storyblok space into another and remembers what it
 did. It has five subcommands; this page is their reference as of
-`sb-mig@6.5.0-beta.9`. Run `sb-mig copy --help` for the same facts in the
+`sb-mig@6.5.0-beta.17`. Run `sb-mig copy --help` for the same facts in the
 terminal.
 
 | Subcommand | What it does | Writes Storyblok |
@@ -69,6 +69,47 @@ timestamp suffix (`manifest.jsonl.2026-09-15T19-30-20-327Z.bak`) and starts
 empty; nothing is deleted. A later `--with-assets` run then starts without the
 archived asset mappings too. `copy manifests --prune` is the only command that
 deletes a ledger.
+
+A run that stops halfway (a closed terminal, a restart, a lost connection) is
+resumed by running the same command again: the ledger holds what was already
+copied, so nothing is created or uploaded twice.
+
+## Progress and `--verbose`
+
+A long copy reports where it is with one progress line per phase, the same for
+`copy stories`, `copy relink` and `copy assets`:
+
+```
+assets 412/1322 (31%) · 4m07 elapsed · ~9m02 left · ok 410 · failed 2 · last: hero-banner.png
+```
+
+The line holds the phase label, `done/total`, the percentage, the elapsed
+time, an estimate of the time left (`~… left`, once enough items are done),
+the counters (`ok`, and `metadata failed`, `skipped` and `failed` when they are
+not zero) and `last:` with the name of the last item. The phases are
+`listing stories` and `reading stories` (the source pages, then each story's
+full content), `matching target`, then `asset folders`, `assets`, `shells` and
+`content` for a copy, or `relinking` for `copy relink`. With `--source /` the
+two reading phases run once per root, each with that root's own total.
+
+`--progress` picks how the line is written:
+
+| Value | Output |
+| --- | --- |
+| `auto` (default) | `line` when the output is a terminal and `CI` is not set; `plain` otherwise. |
+| `line` | One line redrawn in place, cut to the terminal's width. |
+| `plain` | Whole heartbeat lines — every 50 items or every 30 seconds — and never a carriage return. |
+| `off` | No progress line. |
+
+A run piped into a file or a pager — `2>&1 | tee run.log` — is not writing to a
+terminal, so `auto` writes plain lines by itself and the log holds whole lines
+only. Setting `CI` does the same in a terminal. A value other than the four is
+rejected before anything is read: `--progress must be one of: auto, line,
+plain, off.`
+
+`--verbose` prints the per-item detail again — downloads, uploads, per-asset
+and per-story lines, the periodic heartbeats — instead of the progress line.
+Warnings, failures and the PLAN block are printed either way.
 
 ## copy stories
 
@@ -152,6 +193,8 @@ shape below that point: `--source blog --destination imported` yields
 | `--fresh` | boolean | Ignore the ledger: move every ledger file of the pair aside with a timestamp suffix and start empty. |
 | `--manifestRoot` | string | Directory holding the ledger. Default `.sb-mig`. |
 | `--outputPath` | string | Write the run's JSON report: the plan on `--dry-run`; on apply an outcome for every item plus every failed write. Nothing is written locally without it. |
+| `--progress` | `auto`, `line`, `plain`, `off` | How the run reports where it is. Default `auto`. See [Progress and `--verbose`](#progress-and---verbose). |
+| `--verbose` | boolean | Print the per-item detail instead of the progress line. |
 
 Legacy aliases still work: `--sourceSpace` (`--from`), `--targetSpace`
 (`--to`), `--what` (`--source`), `--where` (`--destination`).
@@ -202,7 +245,9 @@ An asset is referenced in two shapes, and both count:
 | **string** | any text, link, richtext or plugin field, at any depth, in any language copy | an asset link (`linktype: "asset"` with `href`/`url`/`cached_url`), the SEO plugin's `og_image`, `<img src="…">` inside HTML, a richtext `image` node's `src` |
 
 The identity of an asset inside a string is its **path**, `/f/<space>/<size>/<hash>/<name>`
-— never the whole URL. The asset library reports most files as
+— never the whole URL. The short form without a dimensions segment,
+`/f/<space>/<hash>/<name>` (migrated PDFs, some images), is an asset key too,
+read and rewritten the same way. The asset library reports most files as
 `https://s3.amazonaws.com/a.storyblok.com/f/…` while content writes
 `https://a.storyblok.com/f/…`; comparing URLs as text would match nothing.
 When a string reference is rewritten only that path changes: the host form as
@@ -224,7 +269,8 @@ The dry-run says how the references are held:
 and the report's `assetReferenceSummary.byShape` carries the same counts. On a
 real site roughly 7% of asset references were strings — PDF links, share
 images, inline images — and before 6.5.0-beta.9 none of them was copied or
-rewritten.
+rewritten. The short `/f/<space>/<hash>/<name>` form is read since
+6.5.0-beta.10.
 
 ### Pre-flights and what they do not catch
 
@@ -251,8 +297,6 @@ Known gaps, found on real spaces and tracked in the project tracker:
 - An **unknown component inside a field with a whitelist** is rejected, unlike
   an unknown component in an unrestricted field.
 - A **required field that is empty** in the source is rejected on save.
-- **Asset metadata** carrying source-only `internal_tag_ids` is rejected; the
-  file is copied, the alt/title/copyright is not.
 
 ### Publication modes
 
@@ -266,9 +310,40 @@ is saved, `--publicationMode` decides what is published:
 | `save-only` | Nothing is published. |
 
 `--publicationLanguages` scopes the publish call: `all` (default), `default`
-(the default language only), or a comma-separated list of language codes. The
-same scope is applied to every published story; the source's per-language
-publish state is not read.
+(the default language only), or a comma-separated list of language codes.
+
+#### Per-language publish state
+
+Within that scope, each language is published as it was — when the **target**
+space publishes translations individually (the space setting
+`use_translated_stories`, *Enable Individual Translation Publishing*):
+
+- A translation that is live in the source story is published.
+- A translation that was only saved, or was unpublished again, stays
+  unpublished.
+- A translation with unpublished changes is published only from its published
+  version (the `preserve-layers` path for a dirty story), never from its
+  draft; anywhere else it is left as it is.
+
+The state is read from the source story, so the source must publish
+translations individually too; a story from a space that publishes all
+languages together is live in every language when it is published. When the
+source has the setting on and the target off, the PLAN warns:
+
+```
+languages: space 12345 publishes translations individually and the target does not, so each translation's publish state cannot be reproduced; copy the setting first with copy space --only settings
+```
+
+When the target publishes all languages together, a publish takes every
+language at once and the PLAN says so (with `save-only` there is no
+`languages:` line). The two forms of the line:
+
+```
+languages: 310 stories publish in all their live languages; 12 stories keep 19 unpublished translation(s) unpublished; 4 translation(s) with unpublished changes left as they are
+languages: this space publishes all languages together (use_translated_stories off) — a published story goes live in every language
+```
+
+Each report item carries `publishedLanguages` and `leftLanguages`.
 
 ### Failures and outcomes
 
@@ -294,6 +369,8 @@ report carries an outcome:
 | `update_failed` | A shell with no content: Storyblok rejected the write. |
 | `create_failed` | Nothing; the story does not exist in the target. |
 | `skipped_parent_failed` | Nothing; its parent could not be created. |
+| `publish_failed` | `copy relink` only: the repair is saved, the publish was rejected. |
+| `changed_since_read` | `copy relink` only: someone changed the story after the run read it, so nothing was written; a rerun picks it up. |
 
 A rerun of the same command **without `--fresh`** resumes from the ledger:
 existing shells are reused, every story's content is written again, so fixing
@@ -351,11 +428,48 @@ PLAN
 | `rewrite: N references in M stories; K already correct and left untouched` | The exact number of reference values about to change. A story whose references already resolve is not written. |
 
 `copy relink` never creates stories and never copies content from the source;
-only reference values change. It updates the **draft** of each story, so
-published stories need publishing afterwards. It has no `--fresh`: the ledger
-is its input. Options: `--from`, `--to`, `--source` (including `/`),
-`--exclude`, `--destination`, `--mode`, `--dry-run`, `--yes`, `--manifestRoot`,
-`--outputPath`.
+only reference values change. It has no `--fresh`: the ledger is its input.
+Options: `--from`, `--to`, `--source` (including `/`), `--exclude`,
+`--destination`, `--mode`, `--publicationMode`, `--publicationLanguages`,
+`--dry-run`, `--yes`, `--manifestRoot`, `--outputPath`, `--progress`,
+`--verbose`.
+
+### Publication state
+
+`copy relink` keeps each story's publication state, read from the **target**
+story it repairs:
+
+| Target story | What the repair does |
+| --- | --- |
+| Published, no unpublished changes | Saved and republished with the repair. |
+| Draft, or unpublished | Saved, not published. |
+| Published with unpublished changes, and its history holds a published version | The published version from the story's own history is repaired and republished, then the draft is put back (repaired too), so the unfinished draft never goes live. |
+| Published with unpublished changes and no published version in its history, or a story that does not say its state | The repair is saved as a draft only, and the story is **listed** for a person to review and publish. |
+
+The PLAN counts the four:
+
+```
+publication: 212 published — republished with the repair; 40 drafts — saved only; 6 with unpublished changes — live version repaired from its history; 1 with unpublished changes and no published version — draft only, listed
+    listed: about/team (dirty_without_published_layer)
+```
+
+The reason is `dirty_without_published_layer` or `published_state_unknown`.
+The first 20 listed stories are named in the PLAN, the rest in the report.
+When the target publishes translations individually, the reason reads
+`dirty_without_published_layer: dirty (a translation or the default language
+has unpublished changes)`, because the story-level flag also turns on for a
+translation's edit.
+
+`--publicationMode save-only` saves every repair as a draft and publishes
+nothing. `copy relink` refuses `--publicationMode collapse-draft`.
+`--publicationLanguages` scopes the publishes as in `copy stories`, and each
+language is published as it was, read from the target story — see
+[Per-language publish state](#per-language-publish-state).
+
+Before it publishes, `copy relink` reads the story again. A story someone
+changed after the run read it is not written (outcome `changed_since_read`); a
+rerun picks it up. A publish that Storyblok rejects is `publish_failed`; for a
+story with unpublished changes the draft is put back even then.
 
 `copy relink` repairs asset references in both shapes (see [Asset
 references](#asset-references)): a target story that still holds a
@@ -383,10 +497,78 @@ sb-mig copy assets --from 12345 --to 67890 --referenced-by-stories --source blog
 | `--assetFolder <id or path>` (repeatable) | The folder, its ancestors, its descendants and every asset inside that subtree. |
 | `--referenced-by-stories --source <story or folder>` | Only the source-space assets the selected stories reference — as asset objects or as URLs inside strings (see [Asset references](#asset-references)). `--mode` applies as in `copy stories`. |
 
-Use one selector family per run. Assets are matched by the ledger first, then
-by a safe target folder path or a unique file name, before anything is
-created. Apply uploads each file, finalizes the upload, writes the asset's
-metadata, and appends the asset and folder mappings to the ledger.
+Use one selector family per run. Apply uploads each file, finalizes the
+upload, writes the asset's metadata, and appends the asset and folder mappings
+to the ledger.
+
+### What the plan decides
+
+The dry-run and the apply decide with the same code, before anything is
+created:
+
+- A **folder** is reused from the ledger, then found by its path in the
+  target, and otherwise created.
+- An **asset** is reused from the ledger, then found in the target by a
+  unique file name, and otherwise uploaded. A file-name match never claims a
+  target file that another source asset's copy already owns, and a file of the
+  same name under a different dimensions segment (a different size) is a
+  different file.
+- A ledger entry whose target file was deleted from the library, or is owned
+  by another source file, is **stale**: the asset is uploaded again.
+
+`copy assets --dry-run` reads the ledger and the target library and prints
+the result, so a rerun shows what is left to do:
+
+```
+assets: 1204 already copied (ledger), 3 found in target, 115 will upload, 0 stale in ledger (will upload again); folders: 44 already copied, 0 found in target, 2 will create
+```
+
+With a ledger present it also prints the `ledger:` line (`loaded from …
+(resuming)`), and each asset in the dry-run listing says `(already copied)`,
+`(found in target)` or `(stale in ledger: …; will upload again)`. The one
+limit of a dry-run left in the report is `manifests_not_written_in_dry_run`.
+
+### Metadata
+
+Every copied asset gets one metadata write carrying the source's `alt`,
+`title`, `copyright` and `source`, each exactly as the source holds it: an
+empty value stays empty and a `null` stays `null`, so a value cleared in the
+source is cleared in the target too. A rerun writes the metadata of assets
+that were already copied again.
+
+### Internal tags
+
+Internal tags are matched **by name** (trimmed). `copy assets` never creates
+or removes a tag: the Management API refuses tag writes to a personal access
+token. A tag the target already has is attached to the copied asset; a tag it
+lacks is named in the PLAN:
+
+```
+internal tags: 5 matched, 2 missing in space 67890 — create them in Storyblok (Assets → Tags) and rerun: campaign-2025, legal
+```
+
+The asset's alt, title and copyright are written either way. Create the named
+tags in the target under **Assets → Tags** and run the same command again:
+nothing is uploaded twice, and the metadata of the assets already copied is
+written again, now with the tags.
+
+### Retries
+
+Each step of an asset copy — the download from the source, the upload to
+storage, the finalize call — is tried up to three times, after 1 second and
+then 3 seconds, when the error is transient: a dropped or refused connection
+(`ECONNRESET`, `ETIMEDOUT`, `ECONNABORTED`, `EPIPE`, `EAI_AGAIN`,
+`ENOTFOUND`, `ECONNREFUSED`, `socket hang up`) or HTTP `429`, `500`, `502`,
+`503`, `504`. The request for a signed upload URL is retried on `429` and
+`503` only. Each retry is printed:
+
+```
+retrying download for 'hero.png' (1/2) after read ECONNRESET
+```
+
+A step that still fails is recorded with `(after 3 attempts)` at the end of its
+message, and the run carries on. A download that answers with an HTTP error
+status fails instead of uploading the error page.
 
 Assets that live in another Storyblok space (a URL with a different space id)
 are reported and left as they are; they are never fetched from that space.
@@ -396,7 +578,7 @@ copied stories should point at target-space assets.
 
 Options: `--from`, `--to`, `--all`, `--asset`, `--assetFolder`,
 `--referenced-by-stories`, `--source`, `--mode`, `--dry-run`, `--manifestRoot`,
-`--outputPath`.
+`--outputPath`, `--progress`, `--verbose`.
 
 ## copy manifests
 
