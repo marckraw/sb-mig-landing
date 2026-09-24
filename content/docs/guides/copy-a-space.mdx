@@ -246,7 +246,9 @@ the ledger holds what was copied, and nothing is uploaded twice.
    unpublished changes has its live version repaired from its history and its
    draft put back. The stories the PLAN and the report **list** (unpublished
    changes and no published version) hold the repair in their draft only;
-   review and publish those by hand. Stories with the outcome
+   review and publish those by hand. A Storyblok duplicate carries no version
+   history, so right after a duplicate **every** story with unpublished changes
+   is in that list. Stories with the outcome
    `changed_since_read` were edited during the run; run step 4 again for them.
 
 A story Storyblok rejects on save (schema drift, a blank required field) keeps
